@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<!-- saved from url=(0059)file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#story -->
+<html lang="ru"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ekdromis — GDD v1</title>
+<link href="./Ekdromis — GDD v1_files/css2" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0e0c09;
+    --bg2:       #141109;
+    --surface:   rgba(255,255,255,0.03);
+    --border:    rgba(255,255,255,0.07);
+    --border-gold: rgba(185,148,72,0.35);
+
+    --gold:      #c9a84c;
+    --gold-light:#e8c97a;
+    --gold-dim:  #7a6330;
+    --gold-pale: #f0dfa0;
+
+    --terracotta:#b85c38;
+    --terra-dim: #7a3d26;
+    --terra-pale:#e07050;
+
+    --azure:     #4a7fa5;
+    --azure-dim: #2a4f6a;
+
+    --stone:     #2a2520;
+    --stone-mid: #3d3730;
+    --muted:     #8a7a68;
+    --text:      #e8dfc8;
+    --text-dim:  #c4b49a;
+
+    --olive:     #7a8a3a;
+    --olive-dim: #4a5220;
+
+    --shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(185,148,72,0.07) 0%, transparent 70%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a84c' fill-opacity='0.018'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    color: var(--text);
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.8;
+  }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 960px; margin: 0 auto; padding: 4rem 2.5rem 6rem; }
+
+  /* ── HEADER ── */
+  .header {
+    text-align: center;
+    padding: 3rem 2rem 2.5rem;
+    margin-bottom: 3rem;
+    position: relative;
+    border-bottom: 1px solid var(--border-gold);
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(185,148,72,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .greek-border {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    color: var(--gold-dim);
+    font-size: 13px;
+    letter-spacing: 8px;
+  }
+  .greek-border::before,
+  .greek-border::after {
+    content: '';
+    flex: 1;
+    max-width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold-dim));
+  }
+  .greek-border::after { background: linear-gradient(90deg, var(--gold-dim), transparent); }
+
+  h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 52px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+    margin-bottom: 0.3rem;
+    text-shadow: 0 0 60px rgba(201,168,76,0.3), 0 2px 4px rgba(0,0,0,0.8);
+  }
+  .title-greek {
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    color: var(--gold-dim);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .doc-meta {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    font-style: italic;
+    margin-bottom: 1.25rem;
+  }
+  .tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+  .tag {
+    font-size: 11px;
+    padding: 3px 12px;
+    border: 0.5px solid var(--border-gold);
+    color: var(--gold-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+    background: rgba(185,148,72,0.04);
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-top: 2px solid var(--gold-dim);
+    padding: 1.5rem 2rem;
+    margin-bottom: 3rem;
+  }
+  .toc-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold-dim);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .toc-list {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 3rem;
+  }
+  .toc-list a {
+    font-size: 15px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .toc-list a:hover { color: var(--gold); }
+  .toc-num {
+    color: var(--gold-dim);
+    margin-right: 8px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 2.5rem 0;
+    position: relative;
+  }
+  .divider::after {
+    content: '✦';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%);
+    background: var(--bg);
+    padding: 0 14px;
+    color: var(--gold-dim);
+    font-size: 11px;
+  }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 3rem; }
+  .sec-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 1.5rem;
+  }
+  .sec-line { flex: 1; height: 0.5px; background: var(--border); }
+  h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--gold);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ── TEXT ── */
+  .body-text { color: var(--text-dim); font-size: 16px; line-height: 1.85; font-weight: 400; }
+  .callout {
+    padding: 1rem 1.25rem;
+    border-left: 2px solid var(--gold-dim);
+    background: rgba(185,148,72,0.03);
+    font-style: italic;
+  }
+
+  /* ── LORE BOX ── */
+  .lore-box {
+    border: 0.5px solid var(--border-gold);
+    background: rgba(185,148,72,0.04);
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  .lore-box::before {
+    content: '❝';
+    position: absolute;
+    top: -14px;
+    left: 18px;
+    background: var(--bg);
+    padding: 0 8px;
+    color: var(--gold-dim);
+    font-size: 20px;
+    line-height: 1;
+  }
+  .lore-text {
+    font-style: italic;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 1.85;
+  }
+  .lore-attr {
+    margin-top: 0.75rem;
+    font-size: 13px;
+    color: var(--gold-dim);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── STORY STEPS ── */
+  .loop-step { display: flex; margin-bottom: 0; }
+  .loop-left { display: flex; flex-direction: column; align-items: center; width: 40px; flex-shrink: 0; }
+  .step-num {
+    width: 30px; height: 30px;
+    border: 1px solid var(--gold-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: var(--gold);
+    background: var(--bg2);
+    z-index: 1;
+    flex-shrink: 0;
+  }
+  .step-line { width: 1px; background: var(--border); flex: 1; min-height: 10px; }
+  .step-body { padding: 2px 0 20px 18px; }
+  .step-name { font-family: 'Cinzel', serif; font-size: 14px; color: var(--gold-light); margin-bottom: 4px; }
+  .step-desc { font-size: 15px; color: var(--muted); line-height: 1.65; }
+
+  /* ── LOCATIONS GRID ── */
+  .locations { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }
+  .loc {
+    border: 0.5px solid var(--border);
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .loc::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .loc-ruins::before   { background: linear-gradient(90deg, #c9a84c, #e8c97a); }
+  .loc-elysium::before { background: linear-gradient(90deg, #d4d0a0, #f0ead0); }
+  .loc-asphodel::before{ background: linear-gradient(90deg, #6a6a6a, #9a9a9a); }
+  .loc-tartarus::before{ background: linear-gradient(90deg, #8b2e2e, #c04040); }
+
+  .loc-name { font-family: 'Cinzel', serif; font-size: 15px; margin-bottom: 4px; }
+  .loc-ruins .loc-name    { color: var(--gold); }
+  .loc-elysium .loc-name  { color: #d4d0a0; }
+  .loc-asphodel .loc-name { color: #9a9a9a; }
+  .loc-tartarus .loc-name { color: #c04040; }
+
+  .loc-palette {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .palette-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(255,255,255,0.1);
+  }
+  .palette-label { font-size: 11px; color: var(--muted); font-style: italic; margin-left: 4px; }
+
+  .loc-desc { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+  .loc-enemies-label { font-size: 11px; color: var(--gold-dim); font-family: 'Cinzel', serif; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+  .loc-enemies { font-size: 13px; color: var(--muted); font-style: italic; }
+  .loc-boss { font-size: 13px; color: var(--terra-pale); margin-top: 6px; }
+  .loc-unlock { font-size: 11px; color: var(--muted); border-top: 0.5px solid var(--border); padding-top: 8px; margin-top: 8px; }
+
+  /* ── HUB ── */
+  .hub-objects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hub-obj { border: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface); }
+  .hub-obj-name { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-light); margin-bottom: 5px; }
+  .hub-obj-desc { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+  .cost-row { display: flex; gap: 6px; margin-top: 0.75rem; flex-wrap: wrap; }
+  .cost-pill { border: 0.5px solid var(--border); padding: 4px 12px; font-size: 12px; color: var(--gold-dim); font-family: 'Cinzel', serif; background: var(--surface); }
+
+  /* ── ENEMY GRID ── */
+  .enemy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .enemy { border: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface); }
+  .enemy-name { font-family: 'Cinzel', serif; font-size: 13px; color: var(--text); margin-bottom: 6px; }
+  .enemy-loc { font-size: 11px; color: var(--gold-dim); font-weight: 400; }
+  .stats { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+  .stat { font-size: 11px; padding: 2px 8px; border: 0.5px solid var(--border); color: var(--gold-dim); font-family: 'Cinzel', serif; }
+  .enemy-trait { font-size: 13px; color: var(--muted); font-style: italic; line-height: 1.55; }
+  .enemy-boss { border-color: var(--terra-dim); }
+  .enemy-boss .enemy-name { color: var(--terra-pale); }
+
+  /* ── CLASSES ── */
+  .class-header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 0.75rem; margin-top: 1.5rem; }
+  .class-name { font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold); }
+  .class-sub { font-size: 14px; color: var(--muted); font-style: italic; }
+  .class-levels { display: flex; flex-direction: column; margin-bottom: 2rem; }
+  .cl { display: grid; grid-template-columns: 90px 1fr; border: 0.5px solid var(--border); border-bottom: none; }
+  .cl:last-child { border-bottom: 0.5px solid var(--border); }
+  .cl-num {
+    padding: 14px 10px;
+    border-right: 0.5px solid var(--border);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    gap: 4px;
+    background: rgba(185,148,72,0.03);
+  }
+  .cl-num-label { font-family: 'Cinzel', serif; font-size: 10px; color: var(--gold-dim); letter-spacing: 0.1em; }
+  .cl-num-val { font-family: 'Cinzel', serif; font-size: 24px; color: var(--gold); line-height: 1; }
+  .cl-cost { font-size: 11px; color: var(--muted); text-align: center; }
+  .cl-body { padding: 12px 16px; }
+  .cl-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .cl-stat { font-size: 11px; padding: 2px 8px; border: 0.5px solid var(--border); color: var(--gold-dim); font-family: 'Cinzel', serif; }
+  .cl-perks { font-size: 14px; color: var(--muted); margin-bottom: 6px; line-height: 1.6; }
+  .cl-gear { font-size: 13px; color: var(--gold-dim); margin-bottom: 5px; }
+  .cl-spells { font-size: 13px; color: #5aab94; }
+  .new { font-size: 10px; color: #5aab94; border: 0.5px solid #2a6b5e; padding: 1px 5px; font-family: 'Cinzel', serif; letter-spacing: 0.05em; vertical-align: middle; margin-left: 4px; }
+
+  /* ── PERKS ── */
+  .perks-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .perk { border: 0.5px solid var(--border); padding: 12px 14px; background: var(--surface); }
+  .perk-cat { font-size: 10px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; font-family: 'Cinzel', serif; }
+  .perk-name { font-family: 'Cinzel', serif; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .perk-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── MECHANICS ── */
+  .mech {
+    border: 0.5px solid var(--border);
+    padding: 18px 20px 18px 24px;
+    margin-bottom: 12px;
+    position: relative;
+    background: var(--surface);
+  }
+  .mech::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .m-must::before { background: var(--terracotta); }
+  .m-plus::before { background: var(--azure); }
+  .m-pp::before   { background: var(--olive); }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Cinzel', serif;
+    padding: 2px 8px;
+    margin-bottom: 8px;
+    border: 0.5px solid;
+  }
+  .b-must { border-color: var(--terra-dim); color: var(--terra-pale); }
+  .b-plus { border-color: var(--azure-dim); color: var(--azure); }
+  .b-pp   { border-color: var(--olive-dim); color: var(--olive); }
+  .mech-name { font-family: 'Cinzel', serif; font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .mech-desc { font-size: 15px; color: var(--muted); line-height: 1.65; }
+  .mech-example {
+    font-size: 13px;
+    color: var(--gold-dim);
+    margin-top: 10px;
+    padding: 8px 14px;
+    border-left: 2px solid var(--border);
+    font-style: italic;
+  }
+
+  /* ── SYSTEMS ── */
+  .sys-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+  .sys { border: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface); }
+  .sys-label { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }
+  .sys-text { font-size: 14px; color: var(--muted); line-height: 1.55; }
+
+  /* ── SCORE TABLE ── */
+  .score-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .score-table th { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); border-bottom: 0.5px solid var(--border); padding: 10px 14px; text-align: left; font-weight: 400; }
+  .score-table td { padding: 11px 14px; border-bottom: 0.5px solid var(--border); color: var(--muted); vertical-align: top; }
+  .score-table td:last-child { color: var(--gold); font-family: 'Cinzel', serif; text-align: right; }
+  .score-total td { color: var(--text) !important; border-top: 0.5px solid var(--gold-dim) !important; border-bottom: none !important; }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .footer-ornament { color: var(--gold-dim); letter-spacing: 12px; font-size: 14px; margin-bottom: 0.5rem; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 32px; }
+    .locations, .hub-objects, .enemy-grid, .sys-grid, .perks-grid, .toc-list { grid-template-columns: 1fr; }
+    .cl { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="greek-border">⊹ ✦ ⊹</div>
+    <h1>Ekdromis</h1>
+    <div class="title-greek" style="font-size:13px;letter-spacing:0.15em;margin-bottom:0.5rem;">Ekdromis</div>
+    <div style="margin: 0.75rem auto 0; max-width:560px; border-top:0.5px solid var(--border-gold); border-bottom:0.5px solid var(--border-gold); padding:0.9rem 1.5rem;">
+      <div style="font-family:&#39;EB Garamond&#39;,serif;font-style:italic;font-size:14px;color:var(--gold-pale);line-height:1.6;letter-spacing:0.02em;">
+        Οἱ ζῶντες οὐ βαδίζουσιν εἰς τὴν ἐμὴν ἀρχήν.
+        Ἀλλ᾽ ὁ πατήρ σου ἐνθάδε ἐστίν. Καὶ ἡ κώμη σου ἀποθνῄσκει. Βάδιζε.
+      </div>
+      <div style="font-family:&#39;EB Garamond&#39;,serif;font-style:italic;font-size:13px;color:var(--muted);line-height:1.6;margin-top:0.4rem;">
+        Живые не ходят в мои владения. Но твой отец здесь. И деревня твоя умирает. Иди.
+      </div>
+      <div style="font-family:&#39;Cinzel&#39;,serif;font-size:10px;color:var(--gold-dim);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.5rem;">— Аид</div>
+    </div>
+    <div class="doc-meta">Game Design Document · v1 · C++ / SFML · Дедлайн 25.04.2026</div>
+    <div class="tags">
+      <span class="tag">Turn-based Rogue-like</span>
+      <span class="tag">Top-Down</span>
+      <span class="tag">Греческая мифология</span>
+      <span class="tag">4 локации · Аид</span>
+      <span class="tag">4 класса · 5 уровней</span>
+      <span class="tag">21 перк</span>
+      <span class="tag">Дебаффы по атакам</span>
+      <span class="tag">Перманентное снаряжение</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">Содержание</div>
+    <ul class="toc-list">
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#story"><span class="toc-num">1.</span>История и сеттинг</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#loop"><span class="toc-num">2.</span>Игровой цикл</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#hub"><span class="toc-num">3.</span>Деревня-хаб</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#locations"><span class="toc-num">4.</span>Локации и враги</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#classes"><span class="toc-num">5.</span>Классы</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#perks"><span class="toc-num">6.</span>Система перков</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#mechanics"><span class="toc-num">7.</span>Оригинальные механики</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#systems"><span class="toc-num">8.</span>Базовые системы</a></li>
+      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#score"><span class="toc-num">9.</span>Критерии оценивания</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. ИСТОРИЯ -->
+  <div class="section" id="story">
+    <div class="sec-header"><div class="sec-line"></div><h2>1. История и сеттинг</h2><div class="sec-line"></div></div>
+
+    <div class="lore-box">
+      <p class="lore-text">Дионис нарушил древний закон: он спустился в царство мёртвых и вывел оттуда душу — свою мать, Семелу. Аид молчал. Но долги богов не исчезают — они ждут.</p>
+      <p class="lore-text" style="margin-top:0.75rem;">Спустя поколения Аид предъявил счёт. Он забрал Диониса к себе — не как мёртвого, а как должника. Формально законно: по древним правилам, тот кто вывел душу из царства мёртвых, сам становится его частью. Даже Зевс не вмешивается — у Аида своя юрисдикция.</p>
+      <p class="lore-text" style="margin-top:0.75rem;">Без Диониса деревня гибнет. Виноград сохнет, скот болеет, земля трескается. Его сын — молодой юноша, выросший среди крестьян и пастухов — получает знак от отца. Через сны, через знаки, через голос жрицы у храма. Дионис успел передать одно: есть четыре области его царства. Пройди их. Докажи Аиду, что ты достоин. Тогда он освободит меня.</p>
+      <div class="lore-attr">— Предыстория Ekdromis</div>
+    </div>
+
+    <p class="body-text" style="margin-bottom:1rem;">Игрок управляет сыном Диониса — безымянным юношей из маленькой греческой деревни. Аид не злодей в классическом смысле: он справедлив по своим законам. Финал — не битва, а испытание. Пройти четыре области его царства и заслужить освобождение отца.</p>
+
+    <p class="body-text"><strong style="color:var(--gold-light);">Механика смерти в нарративе:</strong> когда герой погибает в одной из областей, Аид возвращает его обратно — юноша ещё не выполнил условия испытания, и его душа ему не нужна. Герой просыпается в деревне. Деревня помнит его. Отец ждёт.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 2. ИГРОВОЙ ЦИКЛ -->
+  <div class="section" id="loop">
+    <div class="sec-header"><div class="sec-line"></div><h2>2. Игровой цикл</h2><div class="sec-line"></div></div>
+
+    <div class="loop-step">
+      <div class="loop-left"><div class="step-num">1</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-name">Деревня-хаб</div>
+        <div class="step-desc">Игрок ходит по деревне. Говорит с жрицей (слушает послание Диониса), подходит к кузнецу, торговцу, алтарю. Выбирает класс, тратит золото на его развитие.</div>
+      </div>
+    </div>
+    <div class="loop-step">
+      <div class="loop-left"><div class="step-num">2</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-name">Вход в область</div>
+        <div class="step-desc">Через портал в деревне герой входит в одну из четырёх областей царства Аида. BSP-генерация карты. Расстановка врагов, сундуков, выхода. Сложность зависит от номера уровня внутри области.</div>
+      </div>
+    </div>
+    <div class="loop-step">
+      <div class="loop-left"><div class="step-num">3</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-name">Исследование</div>
+        <div class="step-desc">Клик мышью — A* навигация по тайлам. Наведение — подсветка + тултип. Сундуки: решение о смене снаряжения (перманентно — старое уничтожается). Мана восстанавливается при исследовании новых клеток.</div>
+      </div>
+    </div>
+    <div class="loop-step">
+      <div class="loop-left"><div class="step-num">4</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-name">Бой</div>
+        <div class="step-desc">Клик на монстра → A* → удар → ответный удар. Дебаффы тикают по числу атак игрока, а не по ходам. Заклинания — через горячие клавиши или UI.</div>
+      </div>
+    </div>
+    <div class="loop-step">
+      <div class="loop-left"><div class="step-num">5</div><div class="step-line"></div></div>
+      <div class="step-body">
+        <div class="step-name">Завершение уровня</div>
+        <div class="step-desc">Убил всех монстров → выход активируется → следующий уровень области. Пройдено 5 уровней — область закрыта, открывается следующая.</div>
+      </div>
+    </div>
+    <div class="loop-step">
+      <div class="loop-left"><div class="step-num">6</div></div>
+      <div class="step-body">
+        <div class="step-name">Выбор перка / Смерть → Деревня</div>
+        <div class="step-desc">После каждого уровня — выбор 1 из 3 случайных перков. Смерть: часть золота сохраняется, прогресс областей остаётся. Аид возвращает героя.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 3. ХАБ -->
+  <div class="section" id="hub">
+    <div class="sec-header"><div class="sec-line"></div><h2>3. Деревня-хаб</h2><div class="sec-line"></div></div>
+    <p class="body-text" style="margin-bottom:1rem;">Полноценная Top-Down сцена — маленькая греческая деревня у подножия холма. Игрок физически ходит и взаимодействует с объектами приближением или кликом.</p>
+    <div class="hub-objects">
+      <div class="hub-obj"><div class="hub-obj-name">Портал в царство Аида</div><div class="hub-obj-desc">Тёмный проём в скале, светящийся изнутри. Четыре входа открываются последовательно. Войти — начать забег в цепочку из 5 уровней.</div></div>
+      <div class="hub-obj"><div class="hub-obj-name">Жрица Диониса</div><div class="hub-obj-desc">NPC у храма. Передаёт послания отца — лор, подсказки, нарративные фрагменты. Обновляется после каждого пройденного уровня области.</div></div>
+      <div class="hub-obj"><div class="hub-obj-name">Кузнец</div><div class="hub-obj-desc">Верстак классов. Тратишь золото на повышение уровня класса (1→5). Каждый уровень: лучше статы, новое снаряжение, новые заклинания.</div></div>
+      <div class="hub-obj"><div class="hub-obj-name">Алтарь богов</div><div class="hub-obj-desc">Выбор активного класса перед забегом. На старте доступен только Воин. Остальные классы — Маг и производные — разблокируются за золото.</div></div>
+      <div class="hub-obj"><div class="hub-obj-name">Торговец</div><div class="hub-obj-desc">Продаёт оружие и броню (со скрытым аспектом), зелья HP и маны. Ассортимент обновляется между забегами.</div></div>
+      <div class="hub-obj"><div class="hub-obj-name">Доска памяти</div><div class="hub-obj-desc">Летопись лучших забегов: максимальный уровень области, число убийств, собранное золото.</div></div>
+    </div>
+    <div style="margin-top:1.25rem; padding:1rem 1.25rem; border:0.5px solid var(--border); background:var(--surface);">
+      <div style="font-family:&#39;Cinzel&#39;,serif;font-size:11px;color:var(--gold-dim);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Стоимость уровней класса</div>
+      <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:0.75rem;">Уровень класса постоянен между забегами. Повышение — за золото у кузнеца.</p>
+      <div class="cost-row">
+        <div class="cost-pill">Ур. 1 · бесплатно</div>
+        <div class="cost-pill">Ур. 2 · 50 золота</div>
+        <div class="cost-pill">Ур. 3 · 120 золота</div>
+        <div class="cost-pill">Ур. 4 · 250 золота</div>
+        <div class="cost-pill">Ур. 5 · 500 золота</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 4. ЛОКАЦИИ -->
+  <div class="section" id="locations">
+    <div class="sec-header"><div class="sec-line"></div><h2>4. Локации и враги</h2><div class="sec-line"></div></div>
+    <p class="body-text" style="margin-bottom:1.25rem;">Четыре области царства Аида — максимально контрастные по атмосфере, палитре и типам врагов. Открываются последовательно.</p>
+
+    <div class="locations">
+      <div class="loc loc-ruins">
+        <div class="loc-name">I · Руины Древнего Города</div>
+        <div class="loc-palette">
+          <div class="palette-dot" style="background:#e8dfc8;"></div>
+          <div class="palette-dot" style="background:#c9a84c;"></div>
+          <div class="palette-dot" style="background:#87ceeb;"></div>
+          <div class="palette-dot" style="background:#8b7355;"></div>
+          <span class="palette-label">слоновая кость · золото · лазурь · бронза</span>
+        </div>
+        <div class="loc-desc">Мёртвый город в греческом стиле — белый мрамор, колонны, агора, храмы. Слепящий дневной свет, но полная тишина. Знакомо и тревожно одновременно. Стартовая локация.</div>
+        <div class="loc-enemies-label">Враги</div>
+        <div class="loc-enemies">Каменный страж, Тень горожанина</div>
+        <div class="loc-boss">⚔ Босс: Колосс — ожившая бронзовая статуя</div>
+        <div class="loc-unlock">Открыта сразу</div>
+      </div>
+
+      <div class="loc loc-elysium">
+        <div class="loc-name">II · Элизиум</div>
+        <div class="loc-palette">
+          <div class="palette-dot" style="background:#f0f0d0;"></div>
+          <div class="palette-dot" style="background:#fffacd;"></div>
+          <div class="palette-dot" style="background:#d0e8d0;"></div>
+          <div class="palette-dot" style="background:#c0d0ff;"></div>
+          <span class="palette-label">белый · золотистый · мягкий зелёный · туманный</span>
+        </div>
+        <div class="loc-desc">Поля блаженных — слепящий белый и золотой. Вечное лето, но фальшивое: слишком яркое, слишком тихое. Красиво и жутко. Блаженные стражи не злые — они просто потеряли границу между живым и мёртвым.</div>
+        <div class="loc-enemies-label">Враги</div>
+        <div class="loc-enemies">Блаженный страж, Серафим смерти</div>
+        <div class="loc-boss">⚔ Босс: Тень великого героя — искажённый призрак Ахилла</div>
+        <div class="loc-unlock">После Руин</div>
+      </div>
+
+      <div class="loc loc-asphodel">
+        <div class="loc-name">III · Асфодельные луга</div>
+        <div class="loc-palette">
+          <div class="palette-dot" style="background:#9a9a9a;"></div>
+          <div class="palette-dot" style="background:#c8c8c8;"></div>
+          <div class="palette-dot" style="background:#6a6a7a;"></div>
+          <div class="palette-dot" style="background:#4a4a4a;"></div>
+          <span class="palette-label">серый · туман · пепел · тьма</span>
+        </div>
+        <div class="loc-desc">Бесконечная серая равнина, почти монохромная. Тихая и пустая — угроза не через агрессию, а через потерю ориентиров. Враги медленные, но их много: появляются из тумана.</div>
+        <div class="loc-enemies-label">Враги</div>
+        <div class="loc-enemies">Потерянная душа, Туманный призрак</div>
+        <div class="loc-boss">⚔ Босс: Харон — перевозчик мёртвых, лишённый своей реки</div>
+        <div class="loc-unlock">После Элизиума</div>
+      </div>
+
+      <div class="loc loc-tartarus">
+        <div class="loc-name">IV · Тартар</div>
+        <div class="loc-palette">
+          <div class="palette-dot" style="background:#8b2e2e;"></div>
+          <div class="palette-dot" style="background:#1a0a0a;"></div>
+          <div class="palette-dot" style="background:#c04040;"></div>
+          <div class="palette-dot" style="background:#4a2000;"></div>
+          <span class="palette-label">багровый · чёрный · огонь · пепел</span>
+        </div>
+        <div class="loc-desc">Самое дно — раскалённые цепи, трещины с огнём, вечный грохот. Место заточения титанов. Самая агрессивная, хаотичная, тёмная область. Финальное испытание.</div>
+        <div class="loc-enemies-label">Враги</div>
+        <div class="loc-enemies">Фурия-надсмотрщик, Древнее чудовище</div>
+        <div class="loc-boss">⚔ Босс: Страж Тартара — существо до-олимпийской эпохи</div>
+        <div class="loc-unlock">После Асфодельных лугов</div>
+      </div>
+    </div>
+
+    <p class="body-text" style="margin-bottom:1.25rem; margin-top:0.5rem;">Детальное описание врагов по локациям:</p>
+    <div class="enemy-grid">
+      <div class="enemy">
+        <div class="enemy-name">Каменный страж <span class="enemy-loc">· Руины</span></div>
+        <div class="stats"><span class="stat">HP 15</span><span class="stat">ATK 5</span><span class="stat">DEF 4</span></div>
+        <div class="enemy-trait">Высокая защита. При ударе: шанс наложить Слабость (−30% урона, 3 атаки игрока). Медленный, но танкует.</div>
+      </div>
+      <div class="enemy">
+        <div class="enemy-name">Тень горожанина <span class="enemy-loc">· Руины</span></div>
+        <div class="stats"><span class="stat">HP 8</span><span class="stat">ATK 4</span><span class="stat">DEF 0</span></div>
+        <div class="enemy-trait">30% уклонение. Полупрозрачная — иногда пропускает удары. Слабая, но непредсказуемая.</div>
+      </div>
+      <div class="enemy enemy-boss">
+        <div class="enemy-name">Колосс <span class="enemy-loc">· Босс Руин</span></div>
+        <div class="stats"><span class="stat">HP 60</span><span class="stat">ATK 10</span><span class="stat">DEF 6</span></div>
+        <div class="enemy-trait">Иммунитет к Отравлению. Каждые 3 удара — встряска: накладывает Слабость на 2 атаки. Требует магии или пробивания.</div>
+      </div>
+      <div class="enemy">
+        <div class="enemy-name">Блаженный страж <span class="enemy-loc">· Элизиум</span></div>
+        <div class="stats"><span class="stat">HP 20</span><span class="stat">ATK 6</span><span class="stat">DEF 2</span></div>
+        <div class="enemy-trait">При смерти лечит соседних союзников на 5 HP. Убивать изолированно.</div>
+      </div>
+      <div class="enemy">
+        <div class="enemy-name">Потерянная душа <span class="enemy-loc">· Луга</span></div>
+        <div class="stats"><span class="stat">HP 10</span><span class="stat">ATK 3</span><span class="stat">DEF 0</span></div>
+        <div class="enemy-trait">Появляется из тумана (невидима до смежной клетки). Накладывает Проклятие при ударе (двойная стоимость маны, 2 атаки).</div>
+      </div>
+      <div class="enemy">
+        <div class="enemy-name">Фурия-надсмотрщик <span class="enemy-loc">· Тартар</span></div>
+        <div class="stats"><span class="stat">HP 25</span><span class="stat">ATK 9</span><span class="stat">DEF 2</span></div>
+        <div class="enemy-trait">Накладывает Отравление каждым ударом (3 атаки). Атакует первой при сближении.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 5. КЛАССЫ -->
+  <div class="section" id="classes">
+    <div class="sec-header"><div class="sec-line"></div><h2>5. Классы</h2><div class="sec-line"></div></div>
+    <p class="body-text" style="margin-bottom:1.5rem;">На старте доступен только <strong style="color:var(--gold-light);">Воин</strong>. Остальные классы разблокируются за золото у алтаря богов. Точное количество классов уточняется, но от базовых будут производные — например, Воин → <em>Двуручный воин</em>, Воин → <em>Копейщик</em>. Каждый класс имеет 5 уровней, прокачиваемых за золото у кузнеца.</p>
+
+    <div class="class-header"><div class="class-name">Воин</div><div class="class-sub">Физический урон · Танк · Ближний бой</div></div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:1rem;line-height:1.6;">Высокое HP и защита, стабильный физический урон. Магия усиливает ближний бой. Главный выбор: атаковать с отравлением или переждать.</p>
+    <div class="class-levels">
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">1</div><div class="cl-cost">бесплатно</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 10</span><span class="cl-stat">ATK 2</span><span class="cl-stat">Мана 5</span></div>
+          <div class="cl-perks">+10% физ. защита · +10% физ. атака</div>
+          <div class="cl-gear">Снаряжение: Кожаная куртка (+15% защита), Деревянный меч (+3 урон)</div>
+          <div class="cl-spells">Магия: Удар в прыжке (5 маны · 150% от базового урона)</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">2</div><div class="cl-cost">50 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 12</span><span class="cl-stat">ATK 3</span><span class="cl-stat">Мана 5</span></div>
+          <div class="cl-perks">+15% физ. защита · +15% физ. атака</div>
+          <div class="cl-gear">Снаряжение: Кожаная куртка, Железный меч (+5 урон)</div>
+          <div class="cl-spells">Магия: Удар в прыжке</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">3</div><div class="cl-cost">120 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 18</span><span class="cl-stat">ATK 5</span><span class="cl-stat">Мана 8</span></div>
+          <div class="cl-perks">+15% физ. защита · +15% физ. атака · +20% макс. HP <span class="new">NEW</span></div>
+          <div class="cl-gear">Снаряжение: Кольчуга (+25% защита), Железный меч</div>
+          <div class="cl-spells">Магия: Удар в прыжке · Топот <span class="new">NEW</span> (8 маны · пропускает ответный удар монстра)</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">4</div><div class="cl-cost">250 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 24</span><span class="cl-stat">ATK 7</span><span class="cl-stat">Мана 10</span></div>
+          <div class="cl-perks">+20% физ. защита · +20% физ. атака · +20% макс. HP · 10% парирование <span class="new">NEW</span></div>
+          <div class="cl-gear">Снаряжение: Кольчуга, Стальной меч (+8 урон), Щит (+5% парирование) <span class="new">NEW</span></div>
+          <div class="cl-spells">Магия: Удар в прыжке · Топот</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">5</div><div class="cl-cost">500 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 32</span><span class="cl-stat">ATK 10</span><span class="cl-stat">Мана 12</span></div>
+          <div class="cl-perks">+25% физ. защита · +25% физ. атака · +30% макс. HP · 15% парирование</div>
+          <div class="cl-gear">Снаряжение: Латный доспех (+40% защита), Стальной меч, Щит</div>
+          <div class="cl-spells">Магия: Удар в прыжке · Топот · Боевой клич <span class="new">NEW</span> (12 маны · +50% урон на 3 атаки)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="class-header"><div class="class-name">Маг</div><div class="class-sub">Магический урон · Стеклянная пушка · Контроль</div></div>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:1rem;line-height:1.6;">Низкое HP, огромный урон заклинаниями. Мана восстанавливается при исследовании новых клеток (+2 за клетку). Призраки — его прямая работа. Ключевой выбор: исследовать ради маны или беречь HP.</p>
+    <div class="class-levels">
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">1</div><div class="cl-cost">100 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 6</span><span class="cl-stat">ATK 1</span><span class="cl-stat">Мана 15</span></div>
+          <div class="cl-perks">+20% урон заклинаний · Мана +2 за новую клетку</div>
+          <div class="cl-gear">Снаряжение: Мантия мага (+5% защита), Деревянный посох (+1 урон, +3 маны)</div>
+          <div class="cl-spells">Магия: Огненный шар (6 маны · AoE 3×3, 8 урона)</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">2</div><div class="cl-cost">50 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 7</span><span class="cl-stat">ATK 1</span><span class="cl-stat">Мана 20</span></div>
+          <div class="cl-perks">+25% урон заклинаний · Мана +2 за новую клетку</div>
+          <div class="cl-gear">Снаряжение: Мантия мага, Железный посох (+2 урон, +5 маны)</div>
+          <div class="cl-spells">Магия: Огненный шар · Своп <span class="new">NEW</span> (4 маны · поменяться местами с монстром)</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">3</div><div class="cl-cost">120 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 9</span><span class="cl-stat">ATK 2</span><span class="cl-stat">Мана 25</span></div>
+          <div class="cl-perks">+30% урон заклинаний · Мана +2 за новую клетку · Каждое 3-е заклинание бесплатно <span class="new">NEW</span></div>
+          <div class="cl-gear">Снаряжение: Мантия архимага (+10% защита), Железный посох</div>
+          <div class="cl-spells">Магия: Огненный шар · Своп · Блинк <span class="new">NEW</span> (3 маны · телепорт на 3 клетки)</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">4</div><div class="cl-cost">250 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 11</span><span class="cl-stat">ATK 2</span><span class="cl-stat">Мана 30</span></div>
+          <div class="cl-perks">+35% урон заклинаний · Мана +3 за новую клетку · Каждое 3-е заклинание бесплатно</div>
+          <div class="cl-gear">Снаряжение: Мантия архимага, Магический кристалл (+15 маны) <span class="new">NEW</span></div>
+          <div class="cl-spells">Магия: Огненный шар · Своп · Блинк</div>
+        </div>
+      </div>
+      <div class="cl">
+        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">5</div><div class="cl-cost">500 золота</div></div>
+        <div class="cl-body">
+          <div class="cl-stats"><span class="cl-stat">HP 14</span><span class="cl-stat">ATK 3</span><span class="cl-stat">Мана 40</span></div>
+          <div class="cl-perks">+40% урон заклинаний · Мана +3 за новую клетку · Каждое 3-е заклинание бесплатно · Иммунитет к Проклятию <span class="new">NEW</span></div>
+          <div class="cl-gear">Снаряжение: Мантия архимага, Магический кристалл, Кольцо силы (+10% урон заклинаний) <span class="new">NEW</span></div>
+          <div class="cl-spells">Магия: Огненный шар · Своп · Блинк · Метеор <span class="new">NEW</span> (15 маны · AoE 5×5, 20 урона)</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="font-size:13px;color:var(--muted);font-style:italic;">Классы 3 и 4 (производные) — названия и детали позже.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 6. ПЕРКИ -->
+  <div class="section" id="perks">
+    <div class="sec-header"><div class="sec-line"></div><h2>6. Система перков</h2><div class="sec-line"></div></div>
+    <p class="body-text" style="margin-bottom:1rem;">После каждого пройденного уровня — выбор 1 из 3 случайных перков из пула 21. Накапливаются в течение забега, сбрасываются при смерти.</p>
+    <div class="perks-grid">
+      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Железная кожа</div><div class="perk-desc">+10% к физ. защите</div></div>
+      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Закалка</div><div class="perk-desc">+20% к макс. HP</div></div>
+      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Рефлексы</div><div class="perk-desc">+8% шанс уклонения</div></div>
+      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Колючая броня</div><div class="perk-desc">2 урона атакующему при каждом ударе по герою</div></div>
+      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Стойкость</div><div class="perk-desc">Дебаффы длятся на 1 атаку меньше</div></div>
+      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Второй шанс</div><div class="perk-desc">Один раз за забег: выжить с 1 HP вместо смерти</div></div>
+      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Острое лезвие</div><div class="perk-desc">+15% к физ. урону</div></div>
+      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Вампиризм</div><div class="perk-desc">+12% — восстановление HP от нанесённого урона</div></div>
+      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Критический удар</div><div class="perk-desc">+10% шанс крита (×2 урон)</div></div>
+      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Пробивание</div><div class="perk-desc">Игнорирует 20% физ. защиты монстра</div></div>
+      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Ядовитый клинок</div><div class="perk-desc">10% шанс наложить Отравление (2 атаки) на монстра при ударе</div></div>
+      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Архимаг</div><div class="perk-desc">+20% к урону заклинаний</div></div>
+      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Резервуар маны</div><div class="perk-desc">+15 к макс. мане</div></div>
+      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Концентрация</div><div class="perk-desc">Заклинания стоят на 2 маны меньше (мин. 1)</div></div>
+      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Эхо заклинания</div><div class="perk-desc">15% шанс — заклинание срабатывает дважды</div></div>
+      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Мистический поток</div><div class="perk-desc">Мана восстанавливается +1 за каждую пройденную клетку (не только новые)</div></div>
+      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Золотая рука</div><div class="perk-desc">+25% к золоту из сундуков и монстров</div></div>
+      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Удача</div><div class="perk-desc">+1 дополнительный предмет из каждого сундука</div></div>
+      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Следопыт</div><div class="perk-desc">Начало уровня: открывает все комнаты на мини-карте</div></div>
+      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Алхимик</div><div class="perk-desc">Зелья дают +30% эффекта</div></div>
+      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Знаток</div><div class="perk-desc">Скрытые аспекты снаряжения раскрываются сразу при подборе</div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 7. МЕХАНИКИ -->
+  <div class="section" id="mechanics">
+    <div class="sec-header"><div class="sec-line"></div><h2>7. Оригинальные механики</h2><div class="sec-line"></div></div>
+    <div class="mech m-must">
+      <div class="badge b-must">Обязательный уровень · 30 баллов</div>
+      <div class="mech-name">Деревня-хаб с 4 порталами и прогрессией классов</div>
+      <div class="mech-desc">Деревня — полноценная Top-Down сцена, а не просто меню. Четыре портала в царство Аида открываются последовательно. Прогресс класса (1–5 уровней) покупается за золото у кузнеца и постоянен между забегами. Определяет всю структуру и долгосрочную мотивацию игры.</div>
+    </div>
+    <div class="mech m-plus">
+      <div class="badge b-plus">Уровень+ · +10 баллов</div>
+      <div class="mech-name">Перманентное снаряжение со скрытым аспектом</div>
+      <div class="mech-desc">Смена оружия/брони уничтожает старое. У каждого предмета один скрытый аспект, раскрывающийся после первого применения в бою. Постоянное напряжение: стоит ли менять проверенное оружие на неизвестное из сундука?</div>
+      <div class="mech-example">Нашёл "Кинжал ??". Надел — уничтожил меч. После первого удара раскрылся аспект: "Вампиризм — +2 HP при убийстве".</div>
+    </div>
+    <div class="mech m-pp">
+      <div class="badge b-pp">Уровень++ · +15 баллов</div>
+      <div class="mech-name">Дебаффы по числу атак (не по ходам)</div>
+      <div class="mech-desc">Дебаффы отсчитывают атаки игрока, а не ходы. Отравление (3 атаки): каждый раз когда игрок наносит удар — получает урон от яда, счётчик −1. Стоишь, ходишь, кастуешь — дебафф не тикает. Создаёт уникальный выбор: переждать с магией или рискнуть атаковать.</div>
+      <div class="mech-example">Типы: Отравление (урон при атаке), Слабость (−30% урона при атаке), Проклятие (двойная стоимость маны при касте). Снимаются зельем маны.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 8. СИСТЕМЫ -->
+  <div class="section" id="systems">
+    <div class="sec-header"><div class="sec-line"></div><h2>8. Базовые системы</h2><div class="sec-line"></div></div>
+    <div class="sys-grid">
+      <div class="sys"><div class="sys-label">Карта</div><div class="sys-text">BSP-генерация. Комнаты + коридоры. Сложность растёт с номером уровня в области.</div></div>
+      <div class="sys"><div class="sys-label">Pathfinding</div><div class="sys-text">A* для навигации героя по клику мышью. Учитывает стены и занятые клетки.</div></div>
+      <div class="sys"><div class="sys-label">Сундуки</div><div class="sys-text">Мин. 2 на уровне. Дроп: золото, зелья, оружие/броня со скрытым аспектом.</div></div>
+      <div class="sys"><div class="sys-label">HUD</div><div class="sys-text">HP bar, Mana bar, золото, область/уровень, слоты экипировки, активные дебаффы с счётчиком атак.</div></div>
+      <div class="sys"><div class="sys-label">Управление</div><div class="sys-text">Мышь: движение, атака, взаимодействие. Подсветка клетки + тултип при наведении.</div></div>
+      <div class="sys"><div class="sys-label">Сохранение</div><div class="sys-text">Прогресс областей и уровни классов сохраняются между сессиями.</div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- 9. ОЦЕНИВАНИЕ -->
+  <div class="section" id="score">
+    <div class="sec-header"><div class="sec-line"></div><h2>9. Критерии оценивания</h2><div class="sec-line"></div></div>
+    <table class="score-table">
+      <thead><tr><th>Уровень</th><th>Содержание</th><th>Баллы</th></tr></thead>
+      <tbody>
+        <tr><td>Обязательный</td><td>Все базовые системы + деревня-хаб с 4 порталами и прогрессией классов</td><td>30</td></tr>
+        <tr><td>Уровень+</td><td>Перманентное снаряжение со скрытым аспектом</td><td>+10</td></tr>
+        <tr><td>Уровень++</td><td>Дебаффы по числу атак (Отравление, Слабость, Проклятие)</td><td>+15</td></tr>
+        <tr class="score-total"><td colspan="2">Итого</td><td>55</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div class="footer-ornament">⊹ ✦ ⊹</div>
+    Ekdromis · GDD v1 · C++ / SFML · Дедлайн 25.04.2026
+  </div>
+
+</div>
+
+
+</body></html>
