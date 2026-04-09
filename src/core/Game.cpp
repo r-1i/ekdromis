@@ -9,7 +9,7 @@ Game::Game()
       gsm_(std::make_unique<GameStateManager>(*this)) {};
 
 void Game::run() {
-  window_.create(sf::VideoMode({800, 600}), "SFML works!");
+  window_.create(sf::VideoMode({1024, 768}), "SFML works!");
   hero_ = std::make_unique<Hero>();
   getGameStateManager().goToHub();
 

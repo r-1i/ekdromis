@@ -35,10 +35,20 @@ add_executable(ekdromis
     src/core/Tile.cpp
     src/core/TileObject.h 
     src/core/TileObject.cpp
-    src/world/tile_objects/Chest.h "src/world/tile_objects/NPC.h" "src/world/tile_objects/NPC.cpp" "src/world/tile_objects/Enemy.h" "src/world/tile_objects/Enemy.cpp")
+    src/world/tile_objects/Chest.h 
+    src/world/tile_objects/NPC.h 
+    src/world/tile_objects/NPC.cpp 
+    src/world/tile_objects/Enemy.h
+    src/world/tile_objects/Enemy.cpp
+    src/world/Level.h
+    src/utils/JsonLevelLoader.h
+    src/utils/JsonLevelLoader.cpp "src/world/Level.cpp")
 
 target_include_directories(ekdromis PRIVATE src/) 
-
+configure_file(${CMAKE_SOURCE_DIR}/src/Roboto-Regular.ttf 
+               ${CMAKE_BINARY_DIR}/bin/Roboto-Regular.ttf COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/village_tileset.png
+               ${CMAKE_BINARY_DIR}/bin/village_tileset.png COPYONLY)
 target_compile_features(ekdromis PRIVATE cxx_std_17)
 target_link_libraries(ekdromis PRIVATE SFML::Graphics SFML::Window SFML::System PRIVATE nlohmann_json::nlohmann_json)
 

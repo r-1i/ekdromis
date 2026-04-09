@@ -1,0 +1,1809 @@
+[33mcommit 744e8eb3dffe6b09f40267b14525f04b82bcb9e9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: r-1i <reznikov@niuitmo.ru>
+Date:   Tue Apr 7 00:49:34 2026 +0300
+
+    feat: core game loop and state machine
+
+[1mdiff --git a/CMakeLists.txt b/CMakeLists.txt[m
+[1mindex 4e1bea2..16ad145 100644[m
+[1m--- a/CMakeLists.txt[m
+[1m+++ b/CMakeLists.txt[m
+[36m@@ -1,5 +1,5 @@[m
+ cmake_minimum_required(VERSION 3.28)[m
+[31m-project(CMakeSFMLProject LANGUAGES CXX)[m
+[32m+[m[32mproject(ekdromis LANGUAGES CXX)[m
+ [m
+ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)[m
+ [m
+[36m@@ -10,10 +10,36 @@[m [mFetchContent_Declare(SFML[m
+     GIT_SHALLOW ON[m
+     EXCLUDE_FROM_ALL[m
+     SYSTEM)[m
+[31m-FetchContent_MakeAvailable(SFML)[m
+[32m+[m[32mFetchContent_Declare(nlohmann_json[m
+[32m+[m[32m    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz[m
+[32m+[m[32m)[m
+[32m+[m[32mFetchContent_MakeAvailable(SFML nlohmann_json)[m
+ [m
+[31m-add_executable(main src/main.cpp)[m
+[31m-target_compile_features(main PRIVATE cxx_std_17)[m
+[31m-target_link_libraries(main PRIVATE SFML::Graphics)[m
+[32m+[m[32madd_executable(ekdromis[m
+[32m+[m[32m    src/main.cpp[m
+[32m+[m[32m    src/core/Game.cpp[m
+[32m+[m[32m    src/core/GameStateManager.cpp[m
+[32m+[m[32m    src/states/HubState.cpp[m
+[32m+[m[32m    src/states/DungeonState.cpp[m
+[32m+[m[32m    src/world/World.cpp[m
+[32m+[m[32m    src/world/Village.cpp[m
+[32m+[m[32m    src/core/Tile.cpp[m
+[32m+[m[32m    src/core/TileObject.cpp[m
+[32m+[m[32m    src/world/tile_objects/chest.cpp[m
+[32m+[m[32m    src/entities/Hero.cpp[m
+[32m+[m[32m    src/entities/Hero.h[m
+[32m+[m[32m    src/systems/save/SaveData.h[m[41m [m
+[32m+[m[32m    src/systems/save/SaveManager.h[m
+[32m+[m[32m    src/systems/save/SaveManager.cpp[m[41m [m
+[32m+[m[32m    src/core/Tile.h[m[41m [m
+[32m+[m[32m    src/core/Tile.cpp[m
+[32m+[m[32m    src/core/TileObject.h[m[41m [m
+[32m+[m[32m    src/core/TileObject.cpp[m
+[32m+[m[32m    src/world/tile_objects/Chest.h "src/world/tile_objects/NPC.h" "src/world/tile_objects/NPC.cpp" "src/world/tile_objects/Enemy.h" "src/world/tile_objects/Enemy.cpp")[m
+ [m
+[31m-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT main)[m
+\ No newline at end of file[m
+[32m+[m[32mtarget_include_directories(ekdromis PRIVATE src/)[m[41m [m
+[32m+[m
+[32m+[m[32mtarget_compile_features(ekdromis PRIVATE cxx_std_17)[m
+[32m+[m[32mtarget_link_libraries(ekdromis PRIVATE SFML::Graphics SFML::Window SFML::System PRIVATE nlohmann_json::nlohmann_json)[m
+[32m+[m
+[32m+[m[32mset_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ekdromis)[m
+\ No newline at end of file[m
+[1mdiff --git a/docs/Ekdromis_GDD.html b/docs/Ekdromis_GDD.html[m
+[1mnew file mode 100644[m
+[1mindex 0000000..1b31172[m
+[1m--- /dev/null[m
+[1m+++ b/docs/Ekdromis_GDD.html[m
+[36m@@ -0,0 +1,887 @@[m
+[32m+[m[32m<!DOCTYPE html>[m
+[32m+[m[32m<!-- saved from url=(0059)file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#story -->[m
+[32m+[m[32m<html lang="ru"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">[m
+[32m+[m
+[32m+[m[32m<meta name="viewport" content="width=device-width, initial-scale=1.0">[m
+[32m+[m[32m<title>Ekdromis — GDD v1</title>[m
+[32m+[m[32m<link href="./Ekdromis — GDD v1_files/css2" rel="stylesheet">[m
+[32m+[m[32m<style>[m
+[32m+[m[32m  :root {[m
+[32m+[m[32m    --bg:        #0e0c09;[m
+[32m+[m[32m    --bg2:       #141109;[m
+[32m+[m[32m    --surface:   rgba(255,255,255,0.03);[m
+[32m+[m[32m    --border:    rgba(255,255,255,0.07);[m
+[32m+[m[32m    --border-gold: rgba(185,148,72,0.35);[m
+[32m+[m
+[32m+[m[32m    --gold:      #c9a84c;[m
+[32m+[m[32m    --gold-light:#e8c97a;[m
+[32m+[m[32m    --gold-dim:  #7a6330;[m
+[32m+[m[32m    --gold-pale: #f0dfa0;[m
+[32m+[m
+[32m+[m[32m    --terracotta:#b85c38;[m
+[32m+[m[32m    --terra-dim: #7a3d26;[m
+[32m+[m[32m    --terra-pale:#e07050;[m
+[32m+[m
+[32m+[m[32m    --azure:     #4a7fa5;[m
+[32m+[m[32m    --azure-dim: #2a4f6a;[m
+[32m+[m
+[32m+[m[32m    --stone:     #2a2520;[m
+[32m+[m[32m    --stone-mid: #3d3730;[m
+[32m+[m[32m    --muted:     #8a7a68;[m
+[32m+[m[32m    --text:      #e8dfc8;[m
+[32m+[m[32m    --text-dim:  #c4b49a;[m
+[32m+[m
+[32m+[m[32m    --olive:     #7a8a3a;[m
+[32m+[m[32m    --olive-dim: #4a5220;[m
+[32m+[m
+[32m+[m[32m    --shadow: 0 4px 32px rgba(0,0,0,0.6);[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  * { box-sizing: border-box; margin: 0; padding: 0; }[m
+[32m+[m
+[32m+[m[32m  body {[m
+[32m+[m[32m    background-color: var(--bg);[m
+[32m+[m[32m    background-image:[m
+[32m+[m[32m      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(185,148,72,0.07) 0%, transparent 70%),[m
+[32m+[m[32m      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c9a84c' fill-opacity='0.018'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");[m
+[32m+[m[32m    color: var(--text);[m
+[32m+[m[32m    font-family: 'EB Garamond', Georgia, serif;[m
+[32m+[m[32m    font-size: 17px;[m
+[32m+[m[32m    line-height: 1.8;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── LAYOUT ── */[m
+[32m+[m[32m  .page { max-width: 960px; margin: 0 auto; padding: 4rem 2.5rem 6rem; }[m
+[32m+[m
+[32m+[m[32m  /* ── HEADER ── */[m
+[32m+[m[32m  .header {[m
+[32m+[m[32m    text-align: center;[m
+[32m+[m[32m    padding: 3rem 2rem 2.5rem;[m
+[32m+[m[32m    margin-bottom: 3rem;[m
+[32m+[m[32m    position: relative;[m
+[32m+[m[32m    border-bottom: 1px solid var(--border-gold);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .header::before {[m
+[32m+[m[32m    content: '';[m
+[32m+[m[32m    position: absolute;[m
+[32m+[m[32m    inset: 0;[m
+[32m+[m[32m    background: radial-gradient(ellipse 60% 80% at 50% 0%, rgba(185,148,72,0.06) 0%, transparent 70%);[m
+[32m+[m[32m    pointer-events: none;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  .greek-border {[m
+[32m+[m[32m    display: flex;[m
+[32m+[m[32m    align-items: center;[m
+[32m+[m[32m    justify-content: center;[m
+[32m+[m[32m    gap: 12px;[m
+[32m+[m[32m    margin-bottom: 1.5rem;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    font-size: 13px;[m
+[32m+[m[32m    letter-spacing: 8px;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .greek-border::before,[m
+[32m+[m[32m  .greek-border::after {[m
+[32m+[m[32m    content: '';[m
+[32m+[m[32m    flex: 1;[m
+[32m+[m[32m    max-width: 120px;[m
+[32m+[m[32m    height: 1px;[m
+[32m+[m[32m    background: linear-gradient(90deg, transparent, var(--gold-dim));[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .greek-border::after { background: linear-gradient(90deg, var(--gold-dim), transparent); }[m
+[32m+[m
+[32m+[m[32m  h1 {[m
+[32m+[m[32m    font-family: 'Cinzel Decorative', serif;[m
+[32m+[m[32m    font-size: 52px;[m
+[32m+[m[32m    font-weight: 700;[m
+[32m+[m[32m    color: var(--gold);[m
+[32m+[m[32m    letter-spacing: 0.06em;[m
+[32m+[m[32m    line-height: 1.1;[m
+[32m+[m[32m    margin-bottom: 0.3rem;[m
+[32m+[m[32m    text-shadow: 0 0 60px rgba(201,168,76,0.3), 0 2px 4px rgba(0,0,0,0.8);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .title-greek {[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    font-size: 15px;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    letter-spacing: 0.3em;[m
+[32m+[m[32m    text-transform: uppercase;[m
+[32m+[m[32m    margin-bottom: 1rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .doc-meta {[m
+[32m+[m[32m    font-size: 13px;[m
+[32m+[m[32m    color: var(--muted);[m
+[32m+[m[32m    letter-spacing: 0.08em;[m
+[32m+[m[32m    font-style: italic;[m
+[32m+[m[32m    margin-bottom: 1.25rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .tags {[m
+[32m+[m[32m    display: flex;[m
+[32m+[m[32m    gap: 8px;[m
+[32m+[m[32m    flex-wrap: wrap;[m
+[32m+[m[32m    justify-content: center;[m
+[32m+[m[32m    margin-top: 1rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .tag {[m
+[32m+[m[32m    font-size: 11px;[m
+[32m+[m[32m    padding: 3px 12px;[m
+[32m+[m[32m    border: 0.5px solid var(--border-gold);[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    letter-spacing: 0.08em;[m
+[32m+[m[32m    text-transform: uppercase;[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    background: rgba(185,148,72,0.04);[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── TOC ── */[m
+[32m+[m[32m  .toc {[m
+[32m+[m[32m    background: var(--surface);[m
+[32m+[m[32m    border: 0.5px solid var(--border);[m
+[32m+[m[32m    border-top: 2px solid var(--gold-dim);[m
+[32m+[m[32m    padding: 1.5rem 2rem;[m
+[32m+[m[32m    margin-bottom: 3rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .toc-title {[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    font-size: 11px;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    letter-spacing: 0.2em;[m
+[32m+[m[32m    text-transform: uppercase;[m
+[32m+[m[32m    margin-bottom: 1rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .toc-list {[m
+[32m+[m[32m    list-style: none;[m
+[32m+[m[32m    display: grid;[m
+[32m+[m[32m    grid-template-columns: 1fr 1fr;[m
+[32m+[m[32m    gap: 6px 3rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .toc-list a {[m
+[32m+[m[32m    font-size: 15px;[m
+[32m+[m[32m    color: var(--muted);[m
+[32m+[m[32m    text-decoration: none;[m
+[32m+[m[32m    transition: color 0.2s;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .toc-list a:hover { color: var(--gold); }[m
+[32m+[m[32m  .toc-num {[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    margin-right: 8px;[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    font-size: 11px;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── DIVIDER ── */[m
+[32m+[m[32m  .divider {[m
+[32m+[m[32m    height: 1px;[m
+[32m+[m[32m    background: var(--border);[m
+[32m+[m[32m    margin: 2.5rem 0;[m
+[32m+[m[32m    position: relative;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .divider::after {[m
+[32m+[m[32m    content: '✦';[m
+[32m+[m[32m    position: absolute;[m
+[32m+[m[32m    left: 50%;[m
+[32m+[m[32m    transform: translateX(-50%) translateY(-50%);[m
+[32m+[m[32m    background: var(--bg);[m
+[32m+[m[32m    padding: 0 14px;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    font-size: 11px;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── SECTION ── */[m
+[32m+[m[32m  .section { margin-bottom: 3rem; }[m
+[32m+[m[32m  .sec-header {[m
+[32m+[m[32m    display: flex;[m
+[32m+[m[32m    align-items: center;[m
+[32m+[m[32m    gap: 14px;[m
+[32m+[m[32m    margin-bottom: 1.5rem;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .sec-line { flex: 1; height: 0.5px; background: var(--border); }[m
+[32m+[m[32m  h2 {[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    font-size: 11px;[m
+[32m+[m[32m    font-weight: 400;[m
+[32m+[m[32m    color: var(--gold);[m
+[32m+[m[32m    letter-spacing: 0.22em;[m
+[32m+[m[32m    text-transform: uppercase;[m
+[32m+[m[32m    white-space: nowrap;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── TEXT ── */[m
+[32m+[m[32m  .body-text { color: var(--text-dim); font-size: 16px; line-height: 1.85; font-weight: 400; }[m
+[32m+[m[32m  .callout {[m
+[32m+[m[32m    padding: 1rem 1.25rem;[m
+[32m+[m[32m    border-left: 2px solid var(--gold-dim);[m
+[32m+[m[32m    background: rgba(185,148,72,0.03);[m
+[32m+[m[32m    font-style: italic;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── LORE BOX ── */[m
+[32m+[m[32m  .lore-box {[m
+[32m+[m[32m    border: 0.5px solid var(--border-gold);[m
+[32m+[m[32m    background: rgba(185,148,72,0.04);[m
+[32m+[m[32m    padding: 1.5rem 1.75rem;[m
+[32m+[m[32m    margin-bottom: 1.5rem;[m
+[32m+[m[32m    position: relative;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .lore-box::before {[m
+[32m+[m[32m    content: '❝';[m
+[32m+[m[32m    position: absolute;[m
+[32m+[m[32m    top: -14px;[m
+[32m+[m[32m    left: 18px;[m
+[32m+[m[32m    background: var(--bg);[m
+[32m+[m[32m    padding: 0 8px;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    font-size: 20px;[m
+[32m+[m[32m    line-height: 1;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .lore-text {[m
+[32m+[m[32m    font-style: italic;[m
+[32m+[m[32m    color: var(--text-dim);[m
+[32m+[m[32m    font-size: 16px;[m
+[32m+[m[32m    line-height: 1.85;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .lore-attr {[m
+[32m+[m[32m    margin-top: 0.75rem;[m
+[32m+[m[32m    font-size: 13px;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    letter-spacing: 0.08em;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── STORY STEPS ── */[m
+[32m+[m[32m  .loop-step { display: flex; margin-bottom: 0; }[m
+[32m+[m[32m  .loop-left { display: flex; flex-direction: column; align-items: center; width: 40px; flex-shrink: 0; }[m
+[32m+[m[32m  .step-num {[m
+[32m+[m[32m    width: 30px; height: 30px;[m
+[32m+[m[32m    border: 1px solid var(--gold-dim);[m
+[32m+[m[32m    display: flex; align-items: center; justify-content: center;[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    font-size: 12px;[m
+[32m+[m[32m    color: var(--gold);[m
+[32m+[m[32m    background: var(--bg2);[m
+[32m+[m[32m    z-index: 1;[m
+[32m+[m[32m    flex-shrink: 0;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .step-line { width: 1px; background: var(--border); flex: 1; min-height: 10px; }[m
+[32m+[m[32m  .step-body { padding: 2px 0 20px 18px; }[m
+[32m+[m[32m  .step-name { font-family: 'Cinzel', serif; font-size: 14px; color: var(--gold-light); margin-bottom: 4px; }[m
+[32m+[m[32m  .step-desc { font-size: 15px; color: var(--muted); line-height: 1.65; }[m
+[32m+[m
+[32m+[m[32m  /* ── LOCATIONS GRID ── */[m
+[32m+[m[32m  .locations { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem; }[m
+[32m+[m[32m  .loc {[m
+[32m+[m[32m    border: 0.5px solid var(--border);[m
+[32m+[m[32m    padding: 16px 18px;[m
+[32m+[m[32m    position: relative;[m
+[32m+[m[32m    overflow: hidden;[m
+[32m+[m[32m    background: var(--surface);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .loc::before {[m
+[32m+[m[32m    content: '';[m
+[32m+[m[32m    position: absolute;[m
+[32m+[m[32m    top: 0; left: 0; right: 0;[m
+[32m+[m[32m    height: 3px;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .loc-ruins::before   { background: linear-gradient(90deg, #c9a84c, #e8c97a); }[m
+[32m+[m[32m  .loc-elysium::before { background: linear-gradient(90deg, #d4d0a0, #f0ead0); }[m
+[32m+[m[32m  .loc-asphodel::before{ background: linear-gradient(90deg, #6a6a6a, #9a9a9a); }[m
+[32m+[m[32m  .loc-tartarus::before{ background: linear-gradient(90deg, #8b2e2e, #c04040); }[m
+[32m+[m
+[32m+[m[32m  .loc-name { font-family: 'Cinzel', serif; font-size: 15px; margin-bottom: 4px; }[m
+[32m+[m[32m  .loc-ruins .loc-name    { color: var(--gold); }[m
+[32m+[m[32m  .loc-elysium .loc-name  { color: #d4d0a0; }[m
+[32m+[m[32m  .loc-asphodel .loc-name { color: #9a9a9a; }[m
+[32m+[m[32m  .loc-tartarus .loc-name { color: #c04040; }[m
+[32m+[m
+[32m+[m[32m  .loc-palette {[m
+[32m+[m[32m    display: flex;[m
+[32m+[m[32m    gap: 5px;[m
+[32m+[m[32m    margin-bottom: 8px;[m
+[32m+[m[32m    align-items: center;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .palette-dot {[m
+[32m+[m[32m    width: 10px; height: 10px;[m
+[32m+[m[32m    border-radius: 50%;[m
+[32m+[m[32m    border: 0.5px solid rgba(255,255,255,0.1);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .palette-label { font-size: 11px; color: var(--muted); font-style: italic; margin-left: 4px; }[m
+[32m+[m
+[32m+[m[32m  .loc-desc { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }[m
+[32m+[m[32m  .loc-enemies-label { font-size: 11px; color: var(--gold-dim); font-family: 'Cinzel', serif; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }[m
+[32m+[m[32m  .loc-enemies { font-size: 13px; color: var(--muted); font-style: italic; }[m
+[32m+[m[32m  .loc-boss { font-size: 13px; color: var(--terra-pale); margin-top: 6px; }[m
+[32m+[m[32m  .loc-unlock { font-size: 11px; color: var(--muted); border-top: 0.5px solid var(--border); padding-top: 8px; margin-top: 8px; }[m
+[32m+[m
+[32m+[m[32m  /* ── HUB ── */[m
+[32m+[m[32m  .hub-objects { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }[m
+[32m+[m[32m  .hub-obj { border: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface); }[m
+[32m+[m[32m  .hub-obj-name { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-light); margin-bottom: 5px; }[m
+[32m+[m[32m  .hub-obj-desc { font-size: 14px; color: var(--muted); line-height: 1.55; }[m
+[32m+[m
+[32m+[m[32m  .cost-row { display: flex; gap: 6px; margin-top: 0.75rem; flex-wrap: wrap; }[m
+[32m+[m[32m  .cost-pill { border: 0.5px solid var(--border); padding: 4px 12px; font-size: 12px; color: var(--gold-dim); font-family: 'Cinzel', serif; background: var(--surface); }[m
+[32m+[m
+[32m+[m[32m  /* ── ENEMY GRID ── */[m
+[32m+[m[32m  .enemy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }[m
+[32m+[m[32m  .enemy { border: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface); }[m
+[32m+[m[32m  .enemy-name { font-family: 'Cinzel', serif; font-size: 13px; color: var(--text); margin-bottom: 6px; }[m
+[32m+[m[32m  .enemy-loc { font-size: 11px; color: var(--gold-dim); font-weight: 400; }[m
+[32m+[m[32m  .stats { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }[m
+[32m+[m[32m  .stat { font-size: 11px; padding: 2px 8px; border: 0.5px solid var(--border); color: var(--gold-dim); font-family: 'Cinzel', serif; }[m
+[32m+[m[32m  .enemy-trait { font-size: 13px; color: var(--muted); font-style: italic; line-height: 1.55; }[m
+[32m+[m[32m  .enemy-boss { border-color: var(--terra-dim); }[m
+[32m+[m[32m  .enemy-boss .enemy-name { color: var(--terra-pale); }[m
+[32m+[m
+[32m+[m[32m  /* ── CLASSES ── */[m
+[32m+[m[32m  .class-header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 0.75rem; margin-top: 1.5rem; }[m
+[32m+[m[32m  .class-name { font-family: 'Cinzel', serif; font-size: 22px; color: var(--gold); }[m
+[32m+[m[32m  .class-sub { font-size: 14px; color: var(--muted); font-style: italic; }[m
+[32m+[m[32m  .class-levels { display: flex; flex-direction: column; margin-bottom: 2rem; }[m
+[32m+[m[32m  .cl { display: grid; grid-template-columns: 90px 1fr; border: 0.5px solid var(--border); border-bottom: none; }[m
+[32m+[m[32m  .cl:last-child { border-bottom: 0.5px solid var(--border); }[m
+[32m+[m[32m  .cl-num {[m
+[32m+[m[32m    padding: 14px 10px;[m
+[32m+[m[32m    border-right: 0.5px solid var(--border);[m
+[32m+[m[32m    display: flex; flex-direction: column;[m
+[32m+[m[32m    align-items: center; justify-content: flex-start;[m
+[32m+[m[32m    gap: 4px;[m
+[32m+[m[32m    background: rgba(185,148,72,0.03);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .cl-num-label { font-family: 'Cinzel', serif; font-size: 10px; color: var(--gold-dim); letter-spacing: 0.1em; }[m
+[32m+[m[32m  .cl-num-val { font-family: 'Cinzel', serif; font-size: 24px; color: var(--gold); line-height: 1; }[m
+[32m+[m[32m  .cl-cost { font-size: 11px; color: var(--muted); text-align: center; }[m
+[32m+[m[32m  .cl-body { padding: 12px 16px; }[m
+[32m+[m[32m  .cl-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }[m
+[32m+[m[32m  .cl-stat { font-size: 11px; padding: 2px 8px; border: 0.5px solid var(--border); color: var(--gold-dim); font-family: 'Cinzel', serif; }[m
+[32m+[m[32m  .cl-perks { font-size: 14px; color: var(--muted); margin-bottom: 6px; line-height: 1.6; }[m
+[32m+[m[32m  .cl-gear { font-size: 13px; color: var(--gold-dim); margin-bottom: 5px; }[m
+[32m+[m[32m  .cl-spells { font-size: 13px; color: #5aab94; }[m
+[32m+[m[32m  .new { font-size: 10px; color: #5aab94; border: 0.5px solid #2a6b5e; padding: 1px 5px; font-family: 'Cinzel', serif; letter-spacing: 0.05em; vertical-align: middle; margin-left: 4px; }[m
+[32m+[m
+[32m+[m[32m  /* ── PERKS ── */[m
+[32m+[m[32m  .perks-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }[m
+[32m+[m[32m  .perk { border: 0.5px solid var(--border); padding: 12px 14px; background: var(--surface); }[m
+[32m+[m[32m  .perk-cat { font-size: 10px; color: var(--gold-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; font-family: 'Cinzel', serif; }[m
+[32m+[m[32m  .perk-name { font-family: 'Cinzel', serif; font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }[m
+[32m+[m[32m  .perk-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }[m
+[32m+[m
+[32m+[m[32m  /* ── MECHANICS ── */[m
+[32m+[m[32m  .mech {[m
+[32m+[m[32m    border: 0.5px solid var(--border);[m
+[32m+[m[32m    padding: 18px 20px 18px 24px;[m
+[32m+[m[32m    margin-bottom: 12px;[m
+[32m+[m[32m    position: relative;[m
+[32m+[m[32m    background: var(--surface);[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .mech::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }[m
+[32m+[m[32m  .m-must::before { background: var(--terracotta); }[m
+[32m+[m[32m  .m-plus::before { background: var(--azure); }[m
+[32m+[m[32m  .m-pp::before   { background: var(--olive); }[m
+[32m+[m[32m  .badge {[m
+[32m+[m[32m    display: inline-block;[m
+[32m+[m[32m    font-size: 10px;[m
+[32m+[m[32m    letter-spacing: 0.1em;[m
+[32m+[m[32m    text-transform: uppercase;[m
+[32m+[m[32m    font-family: 'Cinzel', serif;[m
+[32m+[m[32m    padding: 2px 8px;[m
+[32m+[m[32m    margin-bottom: 8px;[m
+[32m+[m[32m    border: 0.5px solid;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .b-must { border-color: var(--terra-dim); color: var(--terra-pale); }[m
+[32m+[m[32m  .b-plus { border-color: var(--azure-dim); color: var(--azure); }[m
+[32m+[m[32m  .b-pp   { border-color: var(--olive-dim); color: var(--olive); }[m
+[32m+[m[32m  .mech-name { font-family: 'Cinzel', serif; font-size: 16px; color: var(--text); margin-bottom: 8px; }[m
+[32m+[m[32m  .mech-desc { font-size: 15px; color: var(--muted); line-height: 1.65; }[m
+[32m+[m[32m  .mech-example {[m
+[32m+[m[32m    font-size: 13px;[m
+[32m+[m[32m    color: var(--gold-dim);[m
+[32m+[m[32m    margin-top: 10px;[m
+[32m+[m[32m    padding: 8px 14px;[m
+[32m+[m[32m    border-left: 2px solid var(--border);[m
+[32m+[m[32m    font-style: italic;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  /* ── SYSTEMS ── */[m
+[32m+[m[32m  .sys-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }[m
+[32m+[m[32m  .sys { border: 0.5px solid var(--border); padding: 14px 16px; background: var(--surface); }[m
+[32m+[m[32m  .sys-label { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 5px; }[m
+[32m+[m[32m  .sys-text { font-size: 14px; color: var(--muted); line-height: 1.55; }[m
+[32m+[m
+[32m+[m[32m  /* ── SCORE TABLE ── */[m
+[32m+[m[32m  .score-table { width: 100%; border-collapse: collapse; font-size: 15px; }[m
+[32m+[m[32m  .score-table th { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); border-bottom: 0.5px solid var(--border); padding: 10px 14px; text-align: left; font-weight: 400; }[m
+[32m+[m[32m  .score-table td { padding: 11px 14px; border-bottom: 0.5px solid var(--border); color: var(--muted); vertical-align: top; }[m
+[32m+[m[32m  .score-table td:last-child { color: var(--gold); font-family: 'Cinzel', serif; text-align: right; }[m
+[32m+[m[32m  .score-total td { color: var(--text) !important; border-top: 0.5px solid var(--gold-dim) !important; border-bottom: none !important; }[m
+[32m+[m
+[32m+[m[32m  /* ── FOOTER ── */[m
+[32m+[m[32m  .footer {[m
+[32m+[m[32m    margin-top: 4rem;[m
+[32m+[m[32m    padding-top: 2rem;[m
+[32m+[m[32m    border-top: 1px solid var(--border);[m
+[32m+[m[32m    text-align: center;[m
+[32m+[m[32m    font-size: 13px;[m
+[32m+[m[32m    color: var(--muted);[m
+[32m+[m[32m    font-style: italic;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  .footer-ornament { color: var(--gold-dim); letter-spacing: 12px; font-size: 14px; margin-bottom: 0.5rem; }[m
+[32m+[m
+[32m+[m[32m  @media (max-width: 640px) {[m
+[32m+[m[32m    h1 { font-size: 32px; }[m
+[32m+[m[32m    .locations, .hub-objects, .enemy-grid, .sys-grid, .perks-grid, .toc-list { grid-template-columns: 1fr; }[m
+[32m+[m[32m    .cl { grid-template-columns: 1fr; }[m
+[32m+[m[32m  }[m
+[32m+[m[32m</style>[m
+[32m+[m[32m</head>[m
+[32m+[m[32m<body>[m
+[32m+[m[32m<div class="page">[m
+[32m+[m
+[32m+[m[32m  <!-- HEADER -->[m
+[32m+[m[32m  <div class="header">[m
+[32m+[m[32m    <div class="greek-border">⊹ ✦ ⊹</div>[m
+[32m+[m[32m    <h1>Ekdromis</h1>[m
+[32m+[m[32m    <div class="title-greek" style="font-size:13px;letter-spacing:0.15em;margin-bottom:0.5rem;">Ekdromis</div>[m
+[32m+[m[32m    <div style="margin: 0.75rem auto 0; max-width:560px; border-top:0.5px solid var(--border-gold); border-bottom:0.5px solid var(--border-gold); padding:0.9rem 1.5rem;">[m
+[32m+[m[32m      <div style="font-family:&#39;EB Garamond&#39;,serif;font-style:italic;font-size:14px;color:var(--gold-pale);line-height:1.6;letter-spacing:0.02em;">[m
+[32m+[m[32m        Οἱ ζῶντες οὐ βαδίζουσιν εἰς τὴν ἐμὴν ἀρχήν.[m
+[32m+[m[32m        Ἀλλ᾽ ὁ πατήρ σου ἐνθάδε ἐστίν. Καὶ ἡ κώμη σου ἀποθνῄσκει. Βάδιζε.[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div style="font-family:&#39;EB Garamond&#39;,serif;font-style:italic;font-size:13px;color:var(--muted);line-height:1.6;margin-top:0.4rem;">[m
+[32m+[m[32m        Живые не ходят в мои владения. Но твой отец здесь. И деревня твоя умирает. Иди.[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div style="font-family:&#39;Cinzel&#39;,serif;font-size:10px;color:var(--gold-dim);letter-spacing:0.15em;text-transform:uppercase;margin-top:0.5rem;">— Аид</div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="doc-meta">Game Design Document · v1 · C++ / SFML · Дедлайн 25.04.2026</div>[m
+[32m+[m[32m    <div class="tags">[m
+[32m+[m[32m      <span class="tag">Turn-based Rogue-like</span>[m
+[32m+[m[32m      <span class="tag">Top-Down</span>[m
+[32m+[m[32m      <span class="tag">Греческая мифология</span>[m
+[32m+[m[32m      <span class="tag">4 локации · Аид</span>[m
+[32m+[m[32m      <span class="tag">4 класса · 5 уровней</span>[m
+[32m+[m[32m      <span class="tag">21 перк</span>[m
+[32m+[m[32m      <span class="tag">Дебаффы по атакам</span>[m
+[32m+[m[32m      <span class="tag">Перманентное снаряжение</span>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <!-- TOC -->[m
+[32m+[m[32m  <div class="toc">[m
+[32m+[m[32m    <div class="toc-title">Содержание</div>[m
+[32m+[m[32m    <ul class="toc-list">[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#story"><span class="toc-num">1.</span>История и сеттинг</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#loop"><span class="toc-num">2.</span>Игровой цикл</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#hub"><span class="toc-num">3.</span>Деревня-хаб</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#locations"><span class="toc-num">4.</span>Локации и враги</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#classes"><span class="toc-num">5.</span>Классы</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#perks"><span class="toc-num">6.</span>Система перков</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#mechanics"><span class="toc-num">7.</span>Оригинальные механики</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#systems"><span class="toc-num">8.</span>Базовые системы</a></li>[m
+[32m+[m[32m      <li><a href="file:///C:/Users/Yaroslav/Downloads/gdd_ekdromis.html#score"><span class="toc-num">9.</span>Критерии оценивания</a></li>[m
+[32m+[m[32m    </ul>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <!-- 1. ИСТОРИЯ -->[m
+[32m+[m[32m  <div class="section" id="story">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>1. История и сеттинг</h2><div class="sec-line"></div></div>[m
+[32m+[m
+[32m+[m[32m    <div class="lore-box">[m
+[32m+[m[32m      <p class="lore-text">Дионис нарушил древний закон: он спустился в царство мёртвых и вывел оттуда душу — свою мать, Семелу. Аид молчал. Но долги богов не исчезают — они ждут.</p>[m
+[32m+[m[32m      <p class="lore-text" style="margin-top:0.75rem;">Спустя поколения Аид предъявил счёт. Он забрал Диониса к себе — не как мёртвого, а как должника. Формально законно: по древним правилам, тот кто вывел душу из царства мёртвых, сам становится его частью. Даже Зевс не вмешивается — у Аида своя юрисдикция.</p>[m
+[32m+[m[32m      <p class="lore-text" style="margin-top:0.75rem;">Без Диониса деревня гибнет. Виноград сохнет, скот болеет, земля трескается. Его сын — молодой юноша, выросший среди крестьян и пастухов — получает знак от отца. Через сны, через знаки, через голос жрицы у храма. Дионис успел передать одно: есть четыре области его царства. Пройди их. Докажи Аиду, что ты достоин. Тогда он освободит меня.</p>[m
+[32m+[m[32m      <div class="lore-attr">— Предыстория Ekdromis</div>[m
+[32m+[m[32m    </div>[m
+[32m+[m
+[32m+[m[32m    <p class="body-text" style="margin-bottom:1rem;">Игрок управляет сыном Диониса — безымянным юношей из маленькой греческой деревни. Аид не злодей в классическом смысле: он справедлив по своим законам. Финал — не битва, а испытание. Пройти четыре области его царства и заслужить освобождение отца.</p>[m
+[32m+[m
+[32m+[m[32m    <p class="body-text"><strong style="color:var(--gold-light);">Механика смерти в нарративе:</strong> когда герой погибает в одной из областей, Аид возвращает его обратно — юноша ещё не выполнил условия испытания, и его душа ему не нужна. Герой просыпается в деревне. Деревня помнит его. Отец ждёт.</p>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 2. ИГРОВОЙ ЦИКЛ -->[m
+[32m+[m[32m  <div class="section" id="loop">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>2. Игровой цикл</h2><div class="sec-line"></div></div>[m
+[32m+[m
+[32m+[m[32m    <div class="loop-step">[m
+[32m+[m[32m      <div class="loop-left"><div class="step-num">1</div><div class="step-line"></div></div>[m
+[32m+[m[32m      <div class="step-body">[m
+[32m+[m[32m        <div class="step-name">Деревня-хаб</div>[m
+[32m+[m[32m        <div class="step-desc">Игрок ходит по деревне. Говорит с жрицей (слушает послание Диониса), подходит к кузнецу, торговцу, алтарю. Выбирает класс, тратит золото на его развитие.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="loop-step">[m
+[32m+[m[32m      <div class="loop-left"><div class="step-num">2</div><div class="step-line"></div></div>[m
+[32m+[m[32m      <div class="step-body">[m
+[32m+[m[32m        <div class="step-name">Вход в область</div>[m
+[32m+[m[32m        <div class="step-desc">Через портал в деревне герой входит в одну из четырёх областей царства Аида. BSP-генерация карты. Расстановка врагов, сундуков, выхода. Сложность зависит от номера уровня внутри области.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="loop-step">[m
+[32m+[m[32m      <div class="loop-left"><div class="step-num">3</div><div class="step-line"></div></div>[m
+[32m+[m[32m      <div class="step-body">[m
+[32m+[m[32m        <div class="step-name">Исследование</div>[m
+[32m+[m[32m        <div class="step-desc">Клик мышью — A* навигация по тайлам. Наведение — подсветка + тултип. Сундуки: решение о смене снаряжения (перманентно — старое уничтожается). Мана восстанавливается при исследовании новых клеток.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="loop-step">[m
+[32m+[m[32m      <div class="loop-left"><div class="step-num">4</div><div class="step-line"></div></div>[m
+[32m+[m[32m      <div class="step-body">[m
+[32m+[m[32m        <div class="step-name">Бой</div>[m
+[32m+[m[32m        <div class="step-desc">Клик на монстра → A* → удар → ответный удар. Дебаффы тикают по числу атак игрока, а не по ходам. Заклинания — через горячие клавиши или UI.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="loop-step">[m
+[32m+[m[32m      <div class="loop-left"><div class="step-num">5</div><div class="step-line"></div></div>[m
+[32m+[m[32m      <div class="step-body">[m
+[32m+[m[32m        <div class="step-name">Завершение уровня</div>[m
+[32m+[m[32m        <div class="step-desc">Убил всех монстров → выход активируется → следующий уровень области. Пройдено 5 уровней — область закрыта, открывается следующая.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="loop-step">[m
+[32m+[m[32m      <div class="loop-left"><div class="step-num">6</div></div>[m
+[32m+[m[32m      <div class="step-body">[m
+[32m+[m[32m        <div class="step-name">Выбор перка / Смерть → Деревня</div>[m
+[32m+[m[32m        <div class="step-desc">После каждого уровня — выбор 1 из 3 случайных перков. Смерть: часть золота сохраняется, прогресс областей остаётся. Аид возвращает героя.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 3. ХАБ -->[m
+[32m+[m[32m  <div class="section" id="hub">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>3. Деревня-хаб</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <p class="body-text" style="margin-bottom:1rem;">Полноценная Top-Down сцена — маленькая греческая деревня у подножия холма. Игрок физически ходит и взаимодействует с объектами приближением или кликом.</p>[m
+[32m+[m[32m    <div class="hub-objects">[m
+[32m+[m[32m      <div class="hub-obj"><div class="hub-obj-name">Портал в царство Аида</div><div class="hub-obj-desc">Тёмный проём в скале, светящийся изнутри. Четыре входа открываются последовательно. Войти — начать забег в цепочку из 5 уровней.</div></div>[m
+[32m+[m[32m      <div class="hub-obj"><div class="hub-obj-name">Жрица Диониса</div><div class="hub-obj-desc">NPC у храма. Передаёт послания отца — лор, подсказки, нарративные фрагменты. Обновляется после каждого пройденного уровня области.</div></div>[m
+[32m+[m[32m      <div class="hub-obj"><div class="hub-obj-name">Кузнец</div><div class="hub-obj-desc">Верстак классов. Тратишь золото на повышение уровня класса (1→5). Каждый уровень: лучше статы, новое снаряжение, новые заклинания.</div></div>[m
+[32m+[m[32m      <div class="hub-obj"><div class="hub-obj-name">Алтарь богов</div><div class="hub-obj-desc">Выбор активного класса перед забегом. На старте доступен только Воин. Остальные классы — Маг и производные — разблокируются за золото.</div></div>[m
+[32m+[m[32m      <div class="hub-obj"><div class="hub-obj-name">Торговец</div><div class="hub-obj-desc">Продаёт оружие и броню (со скрытым аспектом), зелья HP и маны. Ассортимент обновляется между забегами.</div></div>[m
+[32m+[m[32m      <div class="hub-obj"><div class="hub-obj-name">Доска памяти</div><div class="hub-obj-desc">Летопись лучших забегов: максимальный уровень области, число убийств, собранное золото.</div></div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div style="margin-top:1.25rem; padding:1rem 1.25rem; border:0.5px solid var(--border); background:var(--surface);">[m
+[32m+[m[32m      <div style="font-family:&#39;Cinzel&#39;,serif;font-size:11px;color:var(--gold-dim);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.5rem;">Стоимость уровней класса</div>[m
+[32m+[m[32m      <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:0.75rem;">Уровень класса постоянен между забегами. Повышение — за золото у кузнеца.</p>[m
+[32m+[m[32m      <div class="cost-row">[m
+[32m+[m[32m        <div class="cost-pill">Ур. 1 · бесплатно</div>[m
+[32m+[m[32m        <div class="cost-pill">Ур. 2 · 50 золота</div>[m
+[32m+[m[32m        <div class="cost-pill">Ур. 3 · 120 золота</div>[m
+[32m+[m[32m        <div class="cost-pill">Ур. 4 · 250 золота</div>[m
+[32m+[m[32m        <div class="cost-pill">Ур. 5 · 500 золота</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 4. ЛОКАЦИИ -->[m
+[32m+[m[32m  <div class="section" id="locations">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>4. Локации и враги</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <p class="body-text" style="margin-bottom:1.25rem;">Четыре области царства Аида — максимально контрастные по атмосфере, палитре и типам врагов. Открываются последовательно.</p>[m
+[32m+[m
+[32m+[m[32m    <div class="locations">[m
+[32m+[m[32m      <div class="loc loc-ruins">[m
+[32m+[m[32m        <div class="loc-name">I · Руины Древнего Города</div>[m
+[32m+[m[32m        <div class="loc-palette">[m
+[32m+[m[32m          <div class="palette-dot" style="background:#e8dfc8;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#c9a84c;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#87ceeb;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#8b7355;"></div>[m
+[32m+[m[32m          <span class="palette-label">слоновая кость · золото · лазурь · бронза</span>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div class="loc-desc">Мёртвый город в греческом стиле — белый мрамор, колонны, агора, храмы. Слепящий дневной свет, но полная тишина. Знакомо и тревожно одновременно. Стартовая локация.</div>[m
+[32m+[m[32m        <div class="loc-enemies-label">Враги</div>[m
+[32m+[m[32m        <div class="loc-enemies">Каменный страж, Тень горожанина</div>[m
+[32m+[m[32m        <div class="loc-boss">⚔ Босс: Колосс — ожившая бронзовая статуя</div>[m
+[32m+[m[32m        <div class="loc-unlock">Открыта сразу</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      <div class="loc loc-elysium">[m
+[32m+[m[32m        <div class="loc-name">II · Элизиум</div>[m
+[32m+[m[32m        <div class="loc-palette">[m
+[32m+[m[32m          <div class="palette-dot" style="background:#f0f0d0;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#fffacd;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#d0e8d0;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#c0d0ff;"></div>[m
+[32m+[m[32m          <span class="palette-label">белый · золотистый · мягкий зелёный · туманный</span>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div class="loc-desc">Поля блаженных — слепящий белый и золотой. Вечное лето, но фальшивое: слишком яркое, слишком тихое. Красиво и жутко. Блаженные стражи не злые — они просто потеряли границу между живым и мёртвым.</div>[m
+[32m+[m[32m        <div class="loc-enemies-label">Враги</div>[m
+[32m+[m[32m        <div class="loc-enemies">Блаженный страж, Серафим смерти</div>[m
+[32m+[m[32m        <div class="loc-boss">⚔ Босс: Тень великого героя — искажённый призрак Ахилла</div>[m
+[32m+[m[32m        <div class="loc-unlock">После Руин</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      <div class="loc loc-asphodel">[m
+[32m+[m[32m        <div class="loc-name">III · Асфодельные луга</div>[m
+[32m+[m[32m        <div class="loc-palette">[m
+[32m+[m[32m          <div class="palette-dot" style="background:#9a9a9a;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#c8c8c8;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#6a6a7a;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#4a4a4a;"></div>[m
+[32m+[m[32m          <span class="palette-label">серый · туман · пепел · тьма</span>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div class="loc-desc">Бесконечная серая равнина, почти монохромная. Тихая и пустая — угроза не через агрессию, а через потерю ориентиров. Враги медленные, но их много: появляются из тумана.</div>[m
+[32m+[m[32m        <div class="loc-enemies-label">Враги</div>[m
+[32m+[m[32m        <div class="loc-enemies">Потерянная душа, Туманный призрак</div>[m
+[32m+[m[32m        <div class="loc-boss">⚔ Босс: Харон — перевозчик мёртвых, лишённый своей реки</div>[m
+[32m+[m[32m        <div class="loc-unlock">После Элизиума</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      <div class="loc loc-tartarus">[m
+[32m+[m[32m        <div class="loc-name">IV · Тартар</div>[m
+[32m+[m[32m        <div class="loc-palette">[m
+[32m+[m[32m          <div class="palette-dot" style="background:#8b2e2e;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#1a0a0a;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#c04040;"></div>[m
+[32m+[m[32m          <div class="palette-dot" style="background:#4a2000;"></div>[m
+[32m+[m[32m          <span class="palette-label">багровый · чёрный · огонь · пепел</span>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m        <div class="loc-desc">Самое дно — раскалённые цепи, трещины с огнём, вечный грохот. Место заточения титанов. Самая агрессивная, хаотичная, тёмная область. Финальное испытание.</div>[m
+[32m+[m[32m        <div class="loc-enemies-label">Враги</div>[m
+[32m+[m[32m        <div class="loc-enemies">Фурия-надсмотрщик, Древнее чудовище</div>[m
+[32m+[m[32m        <div class="loc-boss">⚔ Босс: Страж Тартара — существо до-олимпийской эпохи</div>[m
+[32m+[m[32m        <div class="loc-unlock">После Асфодельных лугов</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m
+[32m+[m[32m    <p class="body-text" style="margin-bottom:1.25rem; margin-top:0.5rem;">Детальное описание врагов по локациям:</p>[m
+[32m+[m[32m    <div class="enemy-grid">[m
+[32m+[m[32m      <div class="enemy">[m
+[32m+[m[32m        <div class="enemy-name">Каменный страж <span class="enemy-loc">· Руины</span></div>[m
+[32m+[m[32m        <div class="stats"><span class="stat">HP 15</span><span class="stat">ATK 5</span><span class="stat">DEF 4</span></div>[m
+[32m+[m[32m        <div class="enemy-trait">Высокая защита. При ударе: шанс наложить Слабость (−30% урона, 3 атаки игрока). Медленный, но танкует.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="enemy">[m
+[32m+[m[32m        <div class="enemy-name">Тень горожанина <span class="enemy-loc">· Руины</span></div>[m
+[32m+[m[32m        <div class="stats"><span class="stat">HP 8</span><span class="stat">ATK 4</span><span class="stat">DEF 0</span></div>[m
+[32m+[m[32m        <div class="enemy-trait">30% уклонение. Полупрозрачная — иногда пропускает удары. Слабая, но непредсказуемая.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="enemy enemy-boss">[m
+[32m+[m[32m        <div class="enemy-name">Колосс <span class="enemy-loc">· Босс Руин</span></div>[m
+[32m+[m[32m        <div class="stats"><span class="stat">HP 60</span><span class="stat">ATK 10</span><span class="stat">DEF 6</span></div>[m
+[32m+[m[32m        <div class="enemy-trait">Иммунитет к Отравлению. Каждые 3 удара — встряска: накладывает Слабость на 2 атаки. Требует магии или пробивания.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="enemy">[m
+[32m+[m[32m        <div class="enemy-name">Блаженный страж <span class="enemy-loc">· Элизиум</span></div>[m
+[32m+[m[32m        <div class="stats"><span class="stat">HP 20</span><span class="stat">ATK 6</span><span class="stat">DEF 2</span></div>[m
+[32m+[m[32m        <div class="enemy-trait">При смерти лечит соседних союзников на 5 HP. Убивать изолированно.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="enemy">[m
+[32m+[m[32m        <div class="enemy-name">Потерянная душа <span class="enemy-loc">· Луга</span></div>[m
+[32m+[m[32m        <div class="stats"><span class="stat">HP 10</span><span class="stat">ATK 3</span><span class="stat">DEF 0</span></div>[m
+[32m+[m[32m        <div class="enemy-trait">Появляется из тумана (невидима до смежной клетки). Накладывает Проклятие при ударе (двойная стоимость маны, 2 атаки).</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="enemy">[m
+[32m+[m[32m        <div class="enemy-name">Фурия-надсмотрщик <span class="enemy-loc">· Тартар</span></div>[m
+[32m+[m[32m        <div class="stats"><span class="stat">HP 25</span><span class="stat">ATK 9</span><span class="stat">DEF 2</span></div>[m
+[32m+[m[32m        <div class="enemy-trait">Накладывает Отравление каждым ударом (3 атаки). Атакует первой при сближении.</div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 5. КЛАССЫ -->[m
+[32m+[m[32m  <div class="section" id="classes">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>5. Классы</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <p class="body-text" style="margin-bottom:1.5rem;">На старте доступен только <strong style="color:var(--gold-light);">Воин</strong>. Остальные классы разблокируются за золото у алтаря богов. Точное количество классов уточняется, но от базовых будут производные — например, Воин → <em>Двуручный воин</em>, Воин → <em>Копейщик</em>. Каждый класс имеет 5 уровней, прокачиваемых за золото у кузнеца.</p>[m
+[32m+[m
+[32m+[m[32m    <div class="class-header"><div class="class-name">Воин</div><div class="class-sub">Физический урон · Танк · Ближний бой</div></div>[m
+[32m+[m[32m    <p style="font-size:14px;color:var(--muted);margin-bottom:1rem;line-height:1.6;">Высокое HP и защита, стабильный физический урон. Магия усиливает ближний бой. Главный выбор: атаковать с отравлением или переждать.</p>[m
+[32m+[m[32m    <div class="class-levels">[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">1</div><div class="cl-cost">бесплатно</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 10</span><span class="cl-stat">ATK 2</span><span class="cl-stat">Мана 5</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+10% физ. защита · +10% физ. атака</div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Кожаная куртка (+15% защита), Деревянный меч (+3 урон)</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Удар в прыжке (5 маны · 150% от базового урона)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">2</div><div class="cl-cost">50 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 12</span><span class="cl-stat">ATK 3</span><span class="cl-stat">Мана 5</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+15% физ. защита · +15% физ. атака</div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Кожаная куртка, Железный меч (+5 урон)</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Удар в прыжке</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">3</div><div class="cl-cost">120 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 18</span><span class="cl-stat">ATK 5</span><span class="cl-stat">Мана 8</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+15% физ. защита · +15% физ. атака · +20% макс. HP <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Кольчуга (+25% защита), Железный меч</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Удар в прыжке · Топот <span class="new">NEW</span> (8 маны · пропускает ответный удар монстра)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">4</div><div class="cl-cost">250 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 24</span><span class="cl-stat">ATK 7</span><span class="cl-stat">Мана 10</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+20% физ. защита · +20% физ. атака · +20% макс. HP · 10% парирование <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Кольчуга, Стальной меч (+8 урон), Щит (+5% парирование) <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Удар в прыжке · Топот</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">5</div><div class="cl-cost">500 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 32</span><span class="cl-stat">ATK 10</span><span class="cl-stat">Мана 12</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+25% физ. защита · +25% физ. атака · +30% макс. HP · 15% парирование</div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Латный доспех (+40% защита), Стальной меч, Щит</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Удар в прыжке · Топот · Боевой клич <span class="new">NEW</span> (12 маны · +50% урон на 3 атаки)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m
+[32m+[m[32m    <div class="class-header"><div class="class-name">Маг</div><div class="class-sub">Магический урон · Стеклянная пушка · Контроль</div></div>[m
+[32m+[m[32m    <p style="font-size:14px;color:var(--muted);margin-bottom:1rem;line-height:1.6;">Низкое HP, огромный урон заклинаниями. Мана восстанавливается при исследовании новых клеток (+2 за клетку). Призраки — его прямая работа. Ключевой выбор: исследовать ради маны или беречь HP.</p>[m
+[32m+[m[32m    <div class="class-levels">[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">1</div><div class="cl-cost">100 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 6</span><span class="cl-stat">ATK 1</span><span class="cl-stat">Мана 15</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+20% урон заклинаний · Мана +2 за новую клетку</div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Мантия мага (+5% защита), Деревянный посох (+1 урон, +3 маны)</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Огненный шар (6 маны · AoE 3×3, 8 урона)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">2</div><div class="cl-cost">50 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 7</span><span class="cl-stat">ATK 1</span><span class="cl-stat">Мана 20</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+25% урон заклинаний · Мана +2 за новую клетку</div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Мантия мага, Железный посох (+2 урон, +5 маны)</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Огненный шар · Своп <span class="new">NEW</span> (4 маны · поменяться местами с монстром)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">3</div><div class="cl-cost">120 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 9</span><span class="cl-stat">ATK 2</span><span class="cl-stat">Мана 25</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+30% урон заклинаний · Мана +2 за новую клетку · Каждое 3-е заклинание бесплатно <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Мантия архимага (+10% защита), Железный посох</div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Огненный шар · Своп · Блинк <span class="new">NEW</span> (3 маны · телепорт на 3 клетки)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">4</div><div class="cl-cost">250 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 11</span><span class="cl-stat">ATK 2</span><span class="cl-stat">Мана 30</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+35% урон заклинаний · Мана +3 за новую клетку · Каждое 3-е заклинание бесплатно</div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Мантия архимага, Магический кристалл (+15 маны) <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Огненный шар · Своп · Блинк</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div class="cl">[m
+[32m+[m[32m        <div class="cl-num"><div class="cl-num-label">Ур.</div><div class="cl-num-val">5</div><div class="cl-cost">500 золота</div></div>[m
+[32m+[m[32m        <div class="cl-body">[m
+[32m+[m[32m          <div class="cl-stats"><span class="cl-stat">HP 14</span><span class="cl-stat">ATK 3</span><span class="cl-stat">Мана 40</span></div>[m
+[32m+[m[32m          <div class="cl-perks">+40% урон заклинаний · Мана +3 за новую клетку · Каждое 3-е заклинание бесплатно · Иммунитет к Проклятию <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-gear">Снаряжение: Мантия архимага, Магический кристалл, Кольцо силы (+10% урон заклинаний) <span class="new">NEW</span></div>[m
+[32m+[m[32m          <div class="cl-spells">Магия: Огненный шар · Своп · Блинк · Метеор <span class="new">NEW</span> (15 маны · AoE 5×5, 20 урона)</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m
+[32m+[m[32m    <p style="font-size:13px;color:var(--muted);font-style:italic;">Классы 3 и 4 (производные) — названия и детали позже.</p>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 6. ПЕРКИ -->[m
+[32m+[m[32m  <div class="section" id="perks">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>6. Система перков</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <p class="body-text" style="margin-bottom:1rem;">После каждого пройденного уровня — выбор 1 из 3 случайных перков из пула 21. Накапливаются в течение забега, сбрасываются при смерти.</p>[m
+[32m+[m[32m    <div class="perks-grid">[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Железная кожа</div><div class="perk-desc">+10% к физ. защите</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Закалка</div><div class="perk-desc">+20% к макс. HP</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Рефлексы</div><div class="perk-desc">+8% шанс уклонения</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Колючая броня</div><div class="perk-desc">2 урона атакующему при каждом ударе по герою</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Стойкость</div><div class="perk-desc">Дебаффы длятся на 1 атаку меньше</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Защита</div><div class="perk-name">Второй шанс</div><div class="perk-desc">Один раз за забег: выжить с 1 HP вместо смерти</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Острое лезвие</div><div class="perk-desc">+15% к физ. урону</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Вампиризм</div><div class="perk-desc">+12% — восстановление HP от нанесённого урона</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Критический удар</div><div class="perk-desc">+10% шанс крита (×2 урон)</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Пробивание</div><div class="perk-desc">Игнорирует 20% физ. защиты монстра</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Атака</div><div class="perk-name">Ядовитый клинок</div><div class="perk-desc">10% шанс наложить Отравление (2 атаки) на монстра при ударе</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Архимаг</div><div class="perk-desc">+20% к урону заклинаний</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Резервуар маны</div><div class="perk-desc">+15 к макс. мане</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Концентрация</div><div class="perk-desc">Заклинания стоят на 2 маны меньше (мин. 1)</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Эхо заклинания</div><div class="perk-desc">15% шанс — заклинание срабатывает дважды</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Магия</div><div class="perk-name">Мистический поток</div><div class="perk-desc">Мана восстанавливается +1 за каждую пройденную клетку (не только новые)</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Золотая рука</div><div class="perk-desc">+25% к золоту из сундуков и монстров</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Удача</div><div class="perk-desc">+1 дополнительный предмет из каждого сундука</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Следопыт</div><div class="perk-desc">Начало уровня: открывает все комнаты на мини-карте</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Алхимик</div><div class="perk-desc">Зелья дают +30% эффекта</div></div>[m
+[32m+[m[32m      <div class="perk"><div class="perk-cat">Утилита</div><div class="perk-name">Знаток</div><div class="perk-desc">Скрытые аспекты снаряжения раскрываются сразу при подборе</div></div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 7. МЕХАНИКИ -->[m
+[32m+[m[32m  <div class="section" id="mechanics">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>7. Оригинальные механики</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <div class="mech m-must">[m
+[32m+[m[32m      <div class="badge b-must">Обязательный уровень · 30 баллов</div>[m
+[32m+[m[32m      <div class="mech-name">Деревня-хаб с 4 порталами и прогрессией классов</div>[m
+[32m+[m[32m      <div class="mech-desc">Деревня — полноценная Top-Down сцена, а не просто меню. Четыре портала в царство Аида открываются последовательно. Прогресс класса (1–5 уровней) покупается за золото у кузнеца и постоянен между забегами. Определяет всю структуру и долгосрочную мотивацию игры.</div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="mech m-plus">[m
+[32m+[m[32m      <div class="badge b-plus">Уровень+ · +10 баллов</div>[m
+[32m+[m[32m      <div class="mech-name">Перманентное снаряжение со скрытым аспектом</div>[m
+[32m+[m[32m      <div class="mech-desc">Смена оружия/брони уничтожает старое. У каждого предмета один скрытый аспект, раскрывающийся после первого применения в бою. Постоянное напряжение: стоит ли менять проверенное оружие на неизвестное из сундука?</div>[m
+[32m+[m[32m      <div class="mech-example">Нашёл "Кинжал ??". Надел — уничтожил меч. После первого удара раскрылся аспект: "Вампиризм — +2 HP при убийстве".</div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m    <div class="mech m-pp">[m
+[32m+[m[32m      <div class="badge b-pp">Уровень++ · +15 баллов</div>[m
+[32m+[m[32m      <div class="mech-name">Дебаффы по числу атак (не по ходам)</div>[m
+[32m+[m[32m      <div class="mech-desc">Дебаффы отсчитывают атаки игрока, а не ходы. Отравление (3 атаки): каждый раз когда игрок наносит удар — получает урон от яда, счётчик −1. Стоишь, ходишь, кастуешь — дебафф не тикает. Создаёт уникальный выбор: переждать с магией или рискнуть атаковать.</div>[m
+[32m+[m[32m      <div class="mech-example">Типы: Отравление (урон при атаке), Слабость (−30% урона при атаке), Проклятие (двойная стоимость маны при касте). Снимаются зельем маны.</div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 8. СИСТЕМЫ -->[m
+[32m+[m[32m  <div class="section" id="systems">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>8. Базовые системы</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <div class="sys-grid">[m
+[32m+[m[32m      <div class="sys"><div class="sys-label">Карта</div><div class="sys-text">BSP-генерация. Комнаты + коридоры. Сложность растёт с номером уровня в области.</div></div>[m
+[32m+[m[32m      <div class="sys"><div class="sys-label">Pathfinding</div><div class="sys-text">A* для навигации героя по клику мышью. Учитывает стены и занятые клетки.</div></div>[m
+[32m+[m[32m      <div class="sys"><div class="sys-label">Сундуки</div><div class="sys-text">Мин. 2 на уровне. Дроп: золото, зелья, оружие/броня со скрытым аспектом.</div></div>[m
+[32m+[m[32m      <div class="sys"><div class="sys-label">HUD</div><div class="sys-text">HP bar, Mana bar, золото, область/уровень, слоты экипировки, активные дебаффы с счётчиком атак.</div></div>[m
+[32m+[m[32m      <div class="sys"><div class="sys-label">Управление</div><div class="sys-text">Мышь: движение, атака, взаимодействие. Подсветка клетки + тултип при наведении.</div></div>[m
+[32m+[m[32m      <div class="sys"><div class="sys-label">Сохранение</div><div class="sys-text">Прогресс областей и уровни классов сохраняются между сессиями.</div></div>[m
+[32m+[m[32m    </div>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="divider"></div>[m
+[32m+[m
+[32m+[m[32m  <!-- 9. ОЦЕНИВАНИЕ -->[m
+[32m+[m[32m  <div class="section" id="score">[m
+[32m+[m[32m    <div class="sec-header"><div class="sec-line"></div><h2>9. Критерии оценивания</h2><div class="sec-line"></div></div>[m
+[32m+[m[32m    <table class="score-table">[m
+[32m+[m[32m      <thead><tr><th>Уровень</th><th>Содержание</th><th>Баллы</th></tr></thead>[m
+[32m+[m[32m      <tbody>[m
+[32m+[m[32m        <tr><td>Обязательный</td><td>Все базовые системы + деревня-хаб с 4 порталами и прогрессией классов</td><td>30</td></tr>[m
+[32m+[m[32m        <tr><td>Уровень+</td><td>Перманентное снаряжение со скрытым аспектом</td><td>+10</td></tr>[m
+[32m+[m[32m        <tr><td>Уровень++</td><td>Дебаффы по числу атак (Отравление, Слабость, Проклятие)</td><td>+15</td></tr>[m
+[32m+[m[32m        <tr class="score-total"><td colspan="2">Итого</td><td>55</td></tr>[m
+[32m+[m[32m      </tbody>[m
+[32m+[m[32m    </table>[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m  <div class="footer">[m
+[32m+[m[32m    <div class="footer-ornament">⊹ ✦ ⊹</div>[m
+[32m+[m[32m    Ekdromis · GDD v1 · C++ / SFML · Дедлайн 25.04.2026[m
+[32m+[m[32m  </div>[m
+[32m+[m
+[32m+[m[32m</div>[m
+[32m+[m
+[32m+[m
+[32m+[m[32m</body></html>[m
+\ No newline at end of file[m
+[1mdiff --git a/docs/Ekdromis_GDD_files/css2 b/docs/Ekdromis_GDD_files/css2[m
+[1mnew file mode 100644[m
+[1mindex 0000000..8b8c8b0[m
+[1m--- /dev/null[m
+[1m+++ b/docs/Ekdromis_GDD_files/css2[m
+[36m@@ -0,0 +1,261 @@[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIJ7ww63mVu7gt7-GT7LEc.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIJ7ww63mVu7gt79mT7.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 600;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIJ7ww63mVu7gt7-GT7LEc.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 600;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzel/v26/8vIJ7ww63mVu7gt79mT7.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel Decorative';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzeldecorative/v19/daaCSScvJGqLYhG8nNt8KPPswUAPni7dTMx7aA.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel Decorative';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzeldecorative/v19/daaCSScvJGqLYhG8nNt8KPPswUAPni7TTMw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel Decorative';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 700;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzeldecorative/v19/daaHSScvJGqLYhG8nNt8KPPswUAPniZoadlKSTG7lQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'Cinzel Decorative';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 700;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/cinzeldecorative/v19/daaHSScvJGqLYhG8nNt8KPPswUAPniZoadlESTE.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* cyrillic-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL9wU6ingQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* cyrillic */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL95U6ingQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* greek-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL9xU6ingQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+1F00-1FFF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* greek */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL9-U6ingQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* vietnamese */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL9yU6ingQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL9zU6ingQ.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: italic;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGFmQSNjdsmc35JDF1K5GRwUjcdlttVFm-rI7e8QL99U6g.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* cyrillic-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR4SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* cyrillic */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GRxSDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* greek-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR5SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+1F00-1FFF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* greek */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR2SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* vietnamese */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR6SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR7SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 400;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR1SDk.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* cyrillic-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR4SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* cyrillic */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GRxSDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* greek-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR5SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+1F00-1FFF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* greek */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR2SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* vietnamese */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR6SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin-ext */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR7SDktYw.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;[m
+[32m+[m[32m}[m
+[32m+[m[32m/* latin */[m
+[32m+[m[32m@font-face {[m
+[32m+[m[32m  font-family: 'EB Garamond';[m
+[32m+[m[32m  font-style: normal;[m
+[32m+[m[32m  font-weight: 500;[m
+[32m+[m[32m  font-display: swap;[m
+[32m+[m[32m  src: url(https://fonts.gstatic.com/s/ebgaramond/v32/SlGUmQSNjdsmc35JDF1K5GR1SDk.woff2) format('woff2');[m
+[32m+[m[32m  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/core/Game.cpp b/src/core/Game.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..1a34afd[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/Game.cpp[m
+[36m@@ -0,0 +1,39 @@[m
+[32m+[m[32m#include "Game.h"[m
+[32m+[m
+[32m+[m[32m#include <memory>[m
+[32m+[m
+[32m+[m[32m#include "states/HubState.h"[m
+[32m+[m
+[32m+[m[32mGame::Game()[m
+[32m+[m[32m    : hero_(std::make_unique<Hero>()),[m
+[32m+[m[32m      gsm_(std::make_unique<GameStateManager>(*this)) {};[m
+[32m+[m
+[32m+[m[32mvoid Game::run() {[m
+[32m+[m[32m  window_.create(sf::VideoMode({800, 600}), "SFML works!");[m
+[32m+[m[32m  hero_ = std::make_unique<Hero>();[m
+[32m+[m[32m  getGameStateManager().goToHub();[m
+[32m+[m
+[32m+[m[32m  sf::Clock clock;[m
+[32m+[m
+[32m+[m[32m  while (window_.isOpen()) {[m
+[32m+[m[32m    const float dt = clock.restart().asSeconds();[m
+[32m+[m
+[32m+[m[32m    while (const std::optional event = window_.pollEvent()) {[m
+[32m+[m[32m      if (event->is<sf::Event::Closed>())[m
+[32m+[m[32m        window_.close();[m
+[32m+[m[32m      else {[m
+[32m+[m[32m        getGameStateManager().handleEvent(event.value());[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    getGameStateManager().update(dt);[m
+[32m+[m
+[32m+[m[32m    window_.clear(sf::Color::Black);[m
+[32m+[m[32m    getGameStateManager().render(window_);[m
+[32m+[m[32m    window_.display();[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid Game::loadGame() {}[m
+[32m+[m
+[32m+[m[32mvoid Game::saveGame() {}[m
+[1mdiff --git a/src/core/Game.h b/src/core/Game.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..be5e274[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/Game.h[m
+[36m@@ -0,0 +1,26 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include <memory>[m
+[32m+[m
+[32m+[m[32m#include "GameStateManager.h"[m
+[32m+[m[32m#include "SFML/Graphics.hpp"[m
+[32m+[m[32m#include "entities/Hero.h"[m
+[32m+[m[32m#include "systems/save/SaveManager.h"[m
+[32m+[m
+[32m+[m[32mclass GameStateManager;[m
+[32m+[m
+[32m+[m[32mclass Game {[m
+[32m+[m[32m private:[m
+[32m+[m[32m  sf::RenderWindow window_;[m
+[32m+[m[32m  std::unique_ptr<Hero> hero_;[m
+[32m+[m[32m  std::unique_ptr<GameStateManager> gsm_;[m
+[32m+[m[32m  SaveManager saveManager_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  Game();[m
+[32m+[m[32m  void run();[m
+[32m+[m[32m  Hero& getHero() { return *hero_; }[m
+[32m+[m[32m  GameStateManager& getGameStateManager() { return *gsm_; }[m
+[32m+[m[32m  void loadGame();[m
+[32m+[m[32m  void saveGame();[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/core/GameStateManager.cpp b/src/core/GameStateManager.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..5d20e1d[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/GameStateManager.cpp[m
+[36m@@ -0,0 +1,54 @@[m
+[32m+[m[32m﻿#include "GameStateManager.h";[m
+[32m+[m
+[32m+[m[32m#include "states/DungeonState.h";[m
+[32m+[m[32m#include "states/HubState.h";[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::pushState(std::unique_ptr<IGameState> state) {[m
+[32m+[m[32m  if (state) states_.push_back(std::move(state));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::popState() {[m
+[32m+[m[32m  if (!states_.empty()) states_.pop_back();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::clearAndPush(std::unique_ptr<IGameState> state) {[m
+[32m+[m[32m  states_.clear();[m
+[32m+[m[32m  if (state) states_.push_back(std::move(state));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::goToHub() {[m
+[32m+[m[32m  clearAndPush(std::make_unique<HubState>(*this, game_.getHero()));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::goToDungeon(int area) {[m
+[32m+[m[32m  clearAndPush(std::make_unique<DungeonState>(*this, game_.getHero(), area));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::pushPauseMenu() {[m
+[32m+[m[32m  // pushState(std::make_unique<PauseState>(*this));[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::handleEvent(const sf::Event& event) {[m
+[32m+[m[32m  if (!states_.empty()) states_.back()->handleEvent(event);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::update(float dt) {[m
+[32m+[m[32m  if (states_.empty()) return;[m
+[32m+[m
+[32m+[m[32m  for (int i = static_cast<int>(states_.size()) - 1; i >= 0; --i) {[m
+[32m+[m[32m    auto& state = states_[i];[m
+[32m+[m[32m    state->update(dt);[m
+[32m+[m
+[32m+[m[32m    if (state->blocksUpdateBelow()) break;[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid GameStateManager::render(sf::RenderWindow& window) {[m
+[32m+[m[32m  if (states_.empty()) return;[m
+[32m+[m
+[32m+[m[32m  for (const auto& state : states_) {[m
+[32m+[m[32m    state->render(window);[m
+[32m+[m
+[32m+[m[32m    if (state->blocksRenderBelow()) break;[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/core/GameStateManager.h b/src/core/GameStateManager.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..f9c5e9d[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/GameStateManager.h[m
+[36m@@ -0,0 +1,28 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m[32m#include <deque>[m
+[32m+[m[32m#include <memory>[m
+[32m+[m
+[32m+[m[32m#include "SFML/Graphics.hpp"[m
+[32m+[m[32m#include "core/Game.h"[m
+[32m+[m[32m#include "states/IGameState.h"[m
+[32m+[m
+[32m+[m[32mclass Game;[m
+[32m+[m
+[32m+[m[32mclass GameStateManager {[m
+[32m+[m[32m private:[m
+[32m+[m[32m  std::deque<std::unique_ptr<IGameState>> states_;[m
+[32m+[m[32m  Game& game_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  explicit GameStateManager(Game& game) : game_(game) {};[m
+[32m+[m[32m  void pushState(std::unique_ptr<IGameState> state);[m
+[32m+[m[32m  void popState();[m
+[32m+[m[32m  void clearAndPush(std::unique_ptr<IGameState> state);[m
+[32m+[m[32m  void goToHub();[m
+[32m+[m[32m  void goToDungeon(int area);[m
+[32m+[m[32m  void pushPauseMenu();[m
+[32m+[m
+[32m+[m[32m  void handleEvent(const sf::Event& event);[m
+[32m+[m[32m  void update(float dt);[m
+[32m+[m[32m  void render(sf::RenderWindow& window);[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/core/Tile.cpp b/src/core/Tile.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..a530f0e[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/Tile.cpp[m
+[36m@@ -0,0 +1,4 @@[m
+[32m+[m[32m#include "core/Tile.h"[m
+[32m+[m
+[32m+[m[32mbool Tile::isOccupied() const { return object_.get() != nullptr; }[m
+[32m+[m[32mTileObject& Tile::getObject() { return *object_; }[m
+[1mdiff --git a/src/core/Tile.h b/src/core/Tile.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..30c33a9[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/Tile.h[m
+[36m@@ -0,0 +1,16 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m[32m#include <memory>[m
+[32m+[m
+[32m+[m[32m#include "core/TileObject.h"[m
+[32m+[m
+[32m+[m[32menum TileType { Empty = 0, Wall = 1 };[m
+[32m+[m
+[32m+[m[32mclass Tile {[m
+[32m+[m[32m private:[m
+[32m+[m[32m  TileType type_;[m
+[32m+[m[32m  std::unique_ptr<TileObject> object_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  bool isOccupied() const;[m
+[32m+[m[32m  TileObject& getObject();[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/core/TileObject.cpp b/src/core/TileObject.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..799d287[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/TileObject.cpp[m
+[36m@@ -0,0 +1 @@[m
+[32m+[m[32m#include "core/TileObject.h"[m
+[1mdiff --git a/src/core/TileObject.h b/src/core/TileObject.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..da590bd[m
+[1m--- /dev/null[m
+[1m+++ b/src/core/TileObject.h[m
+[36m@@ -0,0 +1,15 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include "SFML/Graphics.hpp"[m
+[32m+[m[32m#include "entities/Hero.h"[m
+[32m+[m
+[32m+[m[32mclass TileObject {[m
+[32m+[m[32m protected:[m
+[32m+[m[32m  sf::Vector2i position_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  virtual void interact(Hero& hero) = 0;[m
+[32m+[m[32m  virtual void update(float dt) = 0;[m
+[32m+[m[32m  bool isPassable() { return true; };[m
+[32m+[m[32m  sf::Vector2i getPosition() { return position_; };[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/entities/Hero.cpp b/src/entities/Hero.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..945f0b3[m
+[1m--- /dev/null[m
+[1m+++ b/src/entities/Hero.cpp[m
+[36m@@ -0,0 +1,17 @@[m
+[32m+[m[32m#include "Hero.h"[m
+[32m+[m
+[32m+[m[32mHero::Hero() {[m
+[32m+[m[32m  {[m
+[32m+[m[32m    position_ = sf::Vector2f(140.f, 140.f);[m
+[32m+[m[32m    size_ = sf::Vector2f(50.f, 50.f);[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid Hero::render(sf::RenderWindow& window) {[m
+[32m+[m[32m  sf::RectangleShape rect({size_.x, size_.y});[m
+[32m+[m[32m  rect.setOrigin({rect.getLocalBounds().position.x + (size_.x / 2.f),[m
+[32m+[m[32m                  rect.getLocalBounds().position.y + (size_.y / 2.f)});[m
+[32m+[m[32m  rect.setPosition(position_);[m
+[32m+[m[32m  rect.setFillColor(sf::Color::Blue);[m
+[32m+[m[32m  window.draw(rect);[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/entities/Hero.h b/src/entities/Hero.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..dd317bb[m
+[1m--- /dev/null[m
+[1m+++ b/src/entities/Hero.h[m
+[36m@@ -0,0 +1,15 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include "SFML/Graphics.hpp"[m
+[32m+[m[32m#include "SFML/System.hpp"[m
+[32m+[m
+[32m+[m[32mclass Hero {[m
+[32m+[m[32m  sf::Vector2f position_;[m
+[32m+[m[32m  sf::Vector2f size_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  Hero();[m
+[32m+[m[32m  void render(sf::RenderWindow& window);[m
+[32m+[m
+[32m+[m[32m  const sf::Vector2f& getPosition() const { return position_; }[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/main.cpp b/src/main.cpp[m
+[1mindex eaa752c..ec5b9b3 100644[m
+[1m--- a/src/main.cpp[m
+[1m+++ b/src/main.cpp[m
+[36m@@ -1,21 +1,8 @@[m
+ #include <SFML/Graphics.hpp>[m
+ [m
+[31m-int main()[m
+[31m-{[m
+[31m-	sf::RenderWindow window( sf::VideoMode( { 200, 200 } ), "SFML works!" );[m
+[31m-	sf::CircleShape shape( 100.f );[m
+[31m-	shape.setFillColor( sf::Color::Green );[m
+[32m+[m[32m#include "core/Game.h"[m
+ [m
+[31m-	while ( window.isOpen() )[m
+[31m-	{[m
+[31m-		while ( const std::optional event = window.pollEvent() )[m
+[31m-		{[m
+[31m-			if ( event->is<sf::Event::Closed>() )[m
+[31m-				window.close();[m
+[31m-		}[m
+[31m-[m
+[31m-		window.clear();[m
+[31m-		window.draw( shape );[m
+[31m-		window.display();[m
+[31m-	}[m
+[32m+[m[32mint main() {[m
+[32m+[m[32m  Game game = Game();[m
+[32m+[m[32m  game.run();[m
+ }[m
+[1mdiff --git a/src/states/DungeonState.cpp b/src/states/DungeonState.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..305ff37[m
+[1m--- /dev/null[m
+[1m+++ b/src/states/DungeonState.cpp[m
+[36m@@ -0,0 +1,15 @@[m
+[32m+[m[32m#include "DungeonState.h"[m
+[32m+[m
+[32m+[m[32m#include "HubState.h"[m
+[32m+[m
+[32m+[m[32mvoid DungeonState::handleEvent(const sf::Event& event) {[m
+[32m+[m[32m  if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {[m
+[32m+[m[32m    if (keyPressed->code == sf::Keyboard::Key::L) {[m
+[32m+[m[32m      gsm_.goToHub();[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid DungeonState::update(float dt) {}[m
+[32m+[m
+[32m+[m[32mvoid DungeonState::render(sf::RenderWindow& window) {}[m
+[1mdiff --git a/src/states/DungeonState.h b/src/states/DungeonState.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..78ec536[m
+[1m--- /dev/null[m
+[1m+++ b/src/states/DungeonState.h[m
+[36m@@ -0,0 +1,22 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m[32m#include "core/GameStateManager.h"[m
+[32m+[m[32m#include "entities/Hero.h"[m
+[32m+[m[32m#include "states/IGameState.h"[m
+[32m+[m[32m#include "world/World.h"[m
+[32m+[m
+[32m+[m[32mclass DungeonState : public IGameState {[m
+[32m+[m[32m  GameStateManager& gsm_;[m
+[32m+[m[32m  Hero& hero_;[m
+[32m+[m[32m  World world_;[m
+[32m+[m[32m  int area_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  DungeonState(GameStateManager& gsm, Hero& hero, int area)[m
+[32m+[m[32m      : gsm_(gsm), hero_(hero), area_(area) {};[m
+[32m+[m[32m  void handleEvent(const sf::Event& event) override;[m
+[32m+[m[32m  void update(float dt) override;[m
+[32m+[m[32m  void render(sf::RenderWindow& window) override;[m
+[32m+[m[32m  bool blocksRenderBelow() { return false; }[m
+[32m+[m[32m  bool blocksUpdateBelow() { return false; }[m
+[32m+[m[32m  ~DungeonState() = default;[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/states/HubState.cpp b/src/states/HubState.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..9a1fd42[m
+[1m--- /dev/null[m
+[1m+++ b/src/states/HubState.cpp[m
+[36m@@ -0,0 +1,20 @@[m
+[32m+[m[32m#include "HubState.h"[m
+[32m+[m
+[32m+[m[32m#include <memory>[m
+[32m+[m
+[32m+[m[32m#include "DungeonState.h"[m
+[32m+[m
+[32m+[m[32mHubState::HubState(GameStateManager& gsm, Hero& hero)[m
+[32m+[m[32m    : gsm_(gsm), hero_(hero), village_(Village(hero)) {}[m
+[32m+[m
+[32m+[m[32mvoid HubState::handleEvent(const sf::Event& event) {[m
+[32m+[m[32m  if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {[m
+[32m+[m[32m    if (keyPressed->code == sf::Keyboard::Key::L) {[m
+[32m+[m[32m      gsm_.goToDungeon(0);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid HubState::update(float dt) {}[m
+[32m+[m
+[32m+[m[32mvoid HubState::render(sf::RenderWindow& window) { village_.render(window); }[m
+[1mdiff --git a/src/states/HubState.h b/src/states/HubState.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..cb650d7[m
+[1m--- /dev/null[m
+[1m+++ b/src/states/HubState.h[m
+[36m@@ -0,0 +1,19 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m[32m#include "core/GameStateManager.h"[m
+[32m+[m[32m#include "states/IGameState.h"[m
+[32m+[m[32m#include "world/Village.h"[m
+[32m+[m
+[32m+[m[32mclass HubState : public IGameState {[m
+[32m+[m[32m  GameStateManager& gsm_;[m
+[32m+[m[32m  Hero& hero_;[m
+[32m+[m[32m  Village village_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  HubState(GameStateManager& gameStateManager, Hero& hero);[m
+[32m+[m[32m  void handleEvent(const sf::Event& event) override;[m
+[32m+[m[32m  void update(float dt) override;[m
+[32m+[m[32m  void render(sf::RenderWindow& window) override;[m
+[32m+[m[32m  bool blocksRenderBelow() { return false; }[m
+[32m+[m[32m  bool blocksUpdateBelow() { return false; }[m
+[32m+[m[32m  ~HubState() = default;[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/states/IGameState.h b/src/states/IGameState.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..8f29dd1[m
+[1m--- /dev/null[m
+[1m+++ b/src/states/IGameState.h[m
+[36m@@ -0,0 +1,12 @@[m
+[32m+[m[32m﻿#pragma once[m
+[32m+[m[32m#include <SFML/Graphics.hpp>[m
+[32m+[m
+[32m+[m[32mclass IGameState {[m
+[32m+[m[32m public:[m
+[32m+[m[32m  virtual void handleEvent(const sf::Event& event) = 0;[m
+[32m+[m[32m  virtual void update(float dt) = 0;[m
+[32m+[m[32m  virtual void render(sf::RenderWindow& window) = 0;[m
+[32m+[m[32m  virtual bool blocksUpdateBelow() const { return true; }[m
+[32m+[m[32m  virtual bool blocksRenderBelow() const { return false; }[m
+[32m+[m[32m  virtual ~IGameState() = default;[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/systems/save/SaveData.cpp b/src/systems/save/SaveData.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..299973a[m
+[1m--- /dev/null[m
+[1m+++ b/src/systems/save/SaveData.cpp[m
+[36m@@ -0,0 +1 @@[m
+[32m+[m[32m#include "SaveData.h"[m
+[1mdiff --git a/src/systems/save/SaveData.h b/src/systems/save/SaveData.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..616c318[m
+[1m--- /dev/null[m
+[1m+++ b/src/systems/save/SaveData.h[m
+[36m@@ -0,0 +1,6 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32mclass SaveData {[m
+[32m+[m[32m  //[m
+[32m+[m[32m  //[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/systems/save/SaveManager.cpp b/src/systems/save/SaveManager.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..d4ee772[m
+[1m--- /dev/null[m
+[1m+++ b/src/systems/save/SaveManager.cpp[m
+[36m@@ -0,0 +1 @@[m
+[32m+[m[32m#include "SaveManager.h"[m
+[1mdiff --git a/src/systems/save/SaveManager.h b/src/systems/save/SaveManager.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..47d901a[m
+[1m--- /dev/null[m
+[1m+++ b/src/systems/save/SaveManager.h[m
+[36m@@ -0,0 +1,6 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32mclass SaveManager {[m
+[32m+[m[32m  //[m
+[32m+[m[32m  //[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/world/Village.cpp b/src/world/Village.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..7c1ca63[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/Village.cpp[m
+[36m@@ -0,0 +1,5 @@[m
+[32m+[m[32m#include "Village.h"[m
+[32m+[m
+[32m+[m[32mVillage::Village(Hero& hero) : hero_(hero) {}[m
+[32m+[m
+[32m+[m[32mvoid Village::render(sf::RenderWindow& window) { hero_.render(window); }[m
+[1mdiff --git a/src/world/Village.h b/src/world/Village.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..9afdc75[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/Village.h[m
+[36m@@ -0,0 +1,15 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include <vector>[m
+[32m+[m
+[32m+[m[32m#include "core/Tile.h"[m
+[32m+[m[32m#include "entities/Hero.h"[m
+[32m+[m
+[32m+[m[32mclass Village {[m
+[32m+[m[32m  std::vector<std::vector<Tile>> grid_;[m
+[32m+[m[32m  Hero& hero_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  Village(Hero& hero);[m
+[32m+[m[32m  void render(sf::RenderWindow& window);[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/world/World.cpp b/src/world/World.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..8b13789[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/World.cpp[m
+[36m@@ -0,0 +1 @@[m
+[32m+[m
+[1mdiff --git a/src/world/World.h b/src/world/World.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..60e30da[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/World.h[m
+[36m@@ -0,0 +1,3 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32mclass World {};[m
+[1mdiff --git a/src/world/tile_objects/Chest.cpp b/src/world/tile_objects/Chest.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..232fc11[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/tile_objects/Chest.cpp[m
+[36m@@ -0,0 +1,5 @@[m
+[32m+[m[32m#include "Chest.h"[m
+[32m+[m
+[32m+[m[32mvoid Chest::interact(Hero& hero) {[m
+[32m+[m[32m  // spawn rewards;[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/world/tile_objects/Chest.h b/src/world/tile_objects/Chest.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..a4a736f[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/tile_objects/Chest.h[m
+[36m@@ -0,0 +1,11 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include "core/TileObject.h"[m
+[32m+[m
+[32m+[m[32mclass Chest : public TileObject {[m
+[32m+[m[32m  // std::vector<Item> lootTable_;[m
+[32m+[m[32m  bool isOpened_;[m
+[32m+[m
+[32m+[m[32m public:[m
+[32m+[m[32m  void interact(Hero& hero);[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/world/tile_objects/Enemy.cpp b/src/world/tile_objects/Enemy.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..924e17b[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/tile_objects/Enemy.cpp[m
+[36m@@ -0,0 +1,5 @@[m
+[32m+[m[32m#include "world/tile_objects/Enemy.h"[m
+[32m+[m
+[32m+[m[32mvoid Enemy::interact(Hero& hero) {[m
+[32m+[m[32m  // logic[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/world/tile_objects/Enemy.h b/src/world/tile_objects/Enemy.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..8c172d2[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/tile_objects/Enemy.h[m
+[36m@@ -0,0 +1,8 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include "core/TileObject.h"[m
+[32m+[m[32mclass Enemy : public TileObject {[m
+[32m+[m[32m private:[m
+[32m+[m[32m public:[m
+[32m+[m[32m  void interact(Hero& hero);[m
+[32m+[m[32m};[m
+[1mdiff --git a/src/world/tile_objects/NPC.cpp b/src/world/tile_objects/NPC.cpp[m
+[1mnew file mode 100644[m
+[1mindex 0000000..fbf8c1c[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/tile_objects/NPC.cpp[m
+[36m@@ -0,0 +1,5 @@[m
+[32m+[m[32m#include "world/tile_objects/NPC.h"[m
+[32m+[m
+[32m+[m[32mvoid NPC::interact(Hero& hero) {[m
+[32m+[m[32m  // logic[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/world/tile_objects/NPC.h b/src/world/tile_objects/NPC.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..ed3b19c[m
+[1m--- /dev/null[m
+[1m+++ b/src/world/tile_objects/NPC.h[m
+[36m@@ -0,0 +1,8 @@[m
+[32m+[m[32m#pragma once[m
+[32m+[m
+[32m+[m[32m#include "core/TileObject.h"[m
+[32m+[m[32mclass NPC : public TileObject {[m
+[32m+[m[32m private:[m
+[32m+[m[32m public:[m
+[32m+[m[32m  void interact(Hero& hero);[m
+[32m+[m[32m};[m
