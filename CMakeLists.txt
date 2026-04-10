@@ -42,14 +42,25 @@ add_executable(ekdromis
     src/world/tile_objects/Enemy.cpp
     src/world/Level.h
     src/utils/JsonLevelLoader.h
-    src/utils/JsonLevelLoader.cpp "src/world/Level.cpp")
+    src/utils/JsonLevelLoader.cpp "src/world/Level.cpp" "src/core/GameConstatns.h" "src/core/Intent.h")
 
 target_include_directories(ekdromis PRIVATE src/) 
 configure_file(${CMAKE_SOURCE_DIR}/src/Roboto-Regular.ttf 
                ${CMAKE_BINARY_DIR}/bin/Roboto-Regular.ttf COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/village_tileset.png
                ${CMAKE_BINARY_DIR}/bin/village_tileset.png COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/maps/village.json
+               ${CMAKE_BINARY_DIR}/bin/village.json COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/music.ogg
+               ${CMAKE_BINARY_DIR}/bin/music.ogg COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/skeleton_idle.png
+               ${CMAKE_BINARY_DIR}/bin/skeleton_idle.png COPYONLY)
 target_compile_features(ekdromis PRIVATE cxx_std_17)
-target_link_libraries(ekdromis PRIVATE SFML::Graphics SFML::Window SFML::System PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(ekdromis PRIVATE
+    SFML::Graphics
+    SFML::Window
+    SFML::System
+    SFML::Audio
+    nlohmann_json::nlohmann_json)
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT ekdromis)

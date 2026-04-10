@@ -9,6 +9,7 @@ class DungeonState : public IGameState {
   Hero& hero_;
   World world_;
   int area_;
+  sf::Vector2i heroSpawnPosition_;
 
  public:
   DungeonState(GameStateManager& gsm, Hero& hero, int area)

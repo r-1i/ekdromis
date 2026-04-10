@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "SFML/Audio.hpp"
 #include "core/Tile.h"
 #include "entities/Hero.h"
 #include "world/Level.h"
@@ -11,8 +12,8 @@ class Village : public Level {
   int gridWidth_;
   int gridHeight_;
   int tileSize_;
-  MapData mapData_;
-  std::vector<std::vector<Tile>> grid_;
+  sf::Music music;
+
   Hero& hero_;
 
   void initialize(const MapData& data) override;

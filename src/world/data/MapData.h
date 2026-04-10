@@ -11,7 +11,7 @@ struct MapData {
 
   std::string name;
 
-  std::vector<std::vector<TileType>> tiles;
+  std::vector<std::vector<unsigned int>> tiles;
 
   int areaNumber = 0;
   int levelNumber = 0;

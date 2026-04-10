@@ -2,28 +2,35 @@
 
 #include <iostream>
 
+#include "SFML/Audio.hpp"
 #include "utils/JsonLevelLoader.h"
 
-Village::Village(Hero& hero) : hero_(hero) { initialize(); }
+Village::Village(Hero& hero) : hero_(hero), music() { initialize(); }
 
 void Village::initialize() {
+  hero_.setPosition(heroSpawnPosition_);
+  music.openFromFile("music.ogg");
+  std::cerr << "try loading music.ogg\n";
+  music.setVolume(100.f);
+  music.setLooping(true);
+  music.play();
   texturesFileLocation_ = "village_tileset.png";
   loadTileset();
   const int ts = 128;
 
   // Полы
-  registerTile(TileType::Floor, 0, 0, ts);
-  registerTile(TileType::Floor, 1, 0, ts);
-  registerTile(TileType::Floor, 2, 0, ts);
-  registerTile(TileType::Floor, 3, 0, ts);
+  registerTile(0, 0, 0, ts);
+  registerTile(1, 1, 0, ts);
+  registerTile(2, 2, 0, ts);
+  registerTile(3, 3, 0, ts);
 
   // Стены
-  registerTile(TileType::Wall, 0, 1, ts);
-  registerTile(TileType::Wall, 1, 1, ts);
-  registerTile(TileType::Wall, 2, 1, ts);
-  registerTile(TileType::Wall, 3, 1, ts);
+  registerTile(4, 0, 1, ts);
+  registerTile(5, 1, 1, ts);
+  registerTile(6, 2, 1, ts);
+  registerTile(7, 3, 1, ts);
 
-  MapData data = JsonLevelLoader::load("villageMap.json");
+  MapData data = JsonLevelLoader::load("village.json");
 
   initialize(data);
 }
@@ -44,19 +51,19 @@ void Village::initialize(const MapData& data) {
 
   for (int y = 0; y < data.height; ++y) {
     for (int x = 0; x < data.width; ++x) {
-      grid_[y][x].setType(mapData_.tiles[y][x]);
+      grid_[y][x].setTextureIndex(mapData_.tiles[y][x]);
     }
   }
 }
 
-void Village::update(float dt) {}
+void Village::update(float dt) { hero_.update(dt); }
 
 void Village::render(sf::RenderWindow& window) {
   for (int y = 0; y < gridHeight_; ++y) {
     for (int x = 0; x < gridWidth_; ++x) {
-      TileType type = grid_[y][x].getType();
+      unsigned int tileTextureIndex = grid_[y][x].getTextureIndex();
 
-      sf::IntRect texRect = getTextureRect(type);
+      sf::IntRect texRect = getTextureRect(tileTextureIndex);
 
       sf::Sprite sprite(tilesetTexture_);
       sprite.setTextureRect(texRect);
