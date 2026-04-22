@@ -3,12 +3,41 @@
 #include "core/GameConstatns.h"
 
 Hero::Hero() : sprite(tilesetTexture_) {
-  size_ = sf::Vector2f(GameConstants::heroSize_, GameConstants::heroSize_);
-  tilesetTexture_.loadFromFile("skeleton_idle.png");
+  size_ = sf::Vector2f(GameConstants::kTileSize, GameConstants::kTileSize);
+  tilesetTexture_.loadFromFile(GameConstants::kHeroTexturesTileset);
   sprite = sf::Sprite(tilesetTexture_, sf::IntRect({0, 0}, {352, 352}));
+  health_ = 10;
 }
 
 void Hero::update(float dt) { animTime_ -= dt; }
+
+void Hero::onTick(float timeBeforeTick) {
+  if (hasAction()) {
+    consumeAction(true);
+    resetAction();
+  }
+}
+
+void Hero::consumeAction(bool canMove) { (void)canMove; }
+
+void Hero::trySetAction(sf::Vector2i direction, float timeToNextBeat,
+                        bool isMove) {
+  if (timeToNextBeat <= .25f) {
+    PlayerAction newAction;
+
+    if (!isMove) {
+      newAction.type = ActionType::Attack;
+      newAction.direction = direction;
+      playerAction_ = newAction;
+    } else {
+      if (timeToNextBeat <= .25f) {
+        newAction.type = ActionType::Move;
+        newAction.direction = direction;
+        playerAction_ = newAction;
+      }
+    }
+  }
+}
 
 void Hero::render(sf::RenderWindow& window) {
   if (animTime_ < 0.f) {
@@ -23,8 +52,13 @@ void Hero::render(sf::RenderWindow& window) {
   }
 
   sprite.setPosition(
-      {static_cast<float>(position_.x * GameConstants::tileSize_),
-       static_cast<float>(position_.y * GameConstants::tileSize_)});
-  sprite.setScale({48.f / 352.f, 48.f / 352.f});
+      {static_cast<float>(position_.x * GameConstants::kTileSize),
+       static_cast<float>(position_.y * GameConstants::kTileSize)});
+  sprite.setScale(
+      {GameConstants::kTileSize / 352.f, GameConstants::kTileSize / 352.f});
   window.draw(sprite);
 }
+
+void Hero::onDeath() { resetAction(); }
+
+int Hero::getDamage() const { return 1; }

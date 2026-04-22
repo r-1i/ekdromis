@@ -19,10 +19,13 @@ MapData JsonLevelLoader::load(const std::string& fileName) {
     data.name = j.value("name", "Unnamed Level");
     data.width = j.value("width", 0);
     data.height = j.value("height", 0);
-    data.tileSize = j.value("tileSize", 48);
     data.areaNumber = j.value("areaNumber", 0);
     data.levelNumber = j.value("levelNumber", 0);
     data.seed = j.value("seed", 0u);
+    data.textureFileLocation = j.value("texturesFileLocation", "");
+
+    data.bpm = 100;
+    data.musicFileLocation = "music.ogg";
 
     // Загрузка тайлов
     if (!j.contains("tiles") || !j["tiles"].is_array()) {

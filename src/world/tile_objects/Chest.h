@@ -7,5 +7,4 @@ class Chest : public TileObject {
   bool isOpened_;
 
  public:
-  void interact(Hero& hero);
 };

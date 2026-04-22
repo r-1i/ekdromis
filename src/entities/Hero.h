@@ -3,29 +3,30 @@
 #include "SFML/Graphics.hpp"
 #include "SFML/System.hpp"
 #include "core/Intent.h"
+#include "core/PlayerAction.h"
+#include "core/TileObject.h"
 
-class Hero {
-  sf::Vector2i position_;
+class Hero : public TileObject {
   sf::Vector2f size_;
   sf::Texture tilesetTexture_;
   float animTime_ = 0.f;
   int animFrame_ = 0;
-  std::unique_ptr<Intent> intent_;
+  std::optional<PlayerAction> playerAction_;
   sf::Sprite sprite;
 
  public:
   Hero();
   void render(sf::RenderWindow& window);
-  void update(float dt);
+  void update(float dt) override;
+  void onTick(float timeBeforeTick);
+  void onDeath() override;
+  int getDamage() const override;
 
-  const sf::Vector2i& getPosition() const { return position_; }
+  const sf::Vector2i& getPosition() const { return TileObject::getPosition(); }
 
-  const Intent& getIntent() const { return *intent_; }
-  bool hasIntent() const { return intent_ != nullptr; }
-  void resetIntent() { intent_ = nullptr; }
-
-  void setPosition(const sf::Vector2i& position) { position_ = position; }
-  void setIntent(std::unique_ptr<Intent> intent) {
-    intent_ = std::move(intent);
-  }
+  const std::optional<PlayerAction>& getAction() const { return playerAction_; }
+  bool hasAction() const { return playerAction_.has_value(); }
+  void consumeAction(bool canMove);
+  void resetAction() { playerAction_.reset(); }
+  void trySetAction(sf::Vector2i direction, float timeToNextBeat, bool isMove);
 };

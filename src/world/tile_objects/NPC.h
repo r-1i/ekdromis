@@ -4,5 +4,4 @@
 class NPC : public TileObject {
  private:
  public:
-  void interact(Hero& hero);
 };

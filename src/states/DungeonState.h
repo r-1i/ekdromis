@@ -1,23 +1,22 @@
 #pragma once
 #include "core/GameStateManager.h"
-#include "entities/Hero.h"
 #include "states/IGameState.h"
 #include "world/World.h"
 
 class DungeonState : public IGameState {
+ private:
   GameStateManager& gsm_;
   Hero& hero_;
-  World world_;
-  int area_;
-  sf::Vector2i heroSpawnPosition_;
+  World village_;
+  sf::Vector2i heroSpawnPosition_ = {12, 12};
+  float timeBeforeBeat_ = .75f;
 
  public:
-  DungeonState(GameStateManager& gsm, Hero& hero, int area)
-      : gsm_(gsm), hero_(hero), area_(area) {};
+  DungeonState(GameStateManager& gameStateManager, Hero& hero);
   void handleEvent(const sf::Event& event) override;
   void update(float dt) override;
   void render(sf::RenderWindow& window) override;
-  bool blocksRenderBelow() { return false; }
-  bool blocksUpdateBelow() { return false; }
+  bool blocksRenderBelow() const override { return false; }
+  bool blocksUpdateBelow() const override { return false; }
   ~DungeonState() = default;
 };

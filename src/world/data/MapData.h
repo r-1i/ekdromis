@@ -7,9 +7,11 @@
 struct MapData {
   int width = 0;
   int height = 0;
-  int tileSize = 48;
+  int bpm = 120;
 
   std::string name;
+  std::string musicFileLocation;
+  std::string textureFileLocation;
 
   std::vector<std::vector<unsigned int>> tiles;
 
