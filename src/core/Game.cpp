@@ -2,14 +2,17 @@
 
 #include <memory>
 
-#include "states/HubState.h"
+#include "GameConstatns.h"
+#include "states/DungeonState.h"
 
 Game::Game()
     : hero_(std::make_unique<Hero>()),
       gsm_(std::make_unique<GameStateManager>(*this)) {};
 
 void Game::run() {
-  window_.create(sf::VideoMode({1024, 768}), "SFML works!");
+  window_.create(sf::VideoMode({GameConstants::kScreenWidth,
+                                GameConstants::kScreenHeight}),
+                 GameConstants::kGameTitle);
   hero_ = std::make_unique<Hero>();
   getGameStateManager().goToHub();
 

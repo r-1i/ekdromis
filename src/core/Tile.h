@@ -1,6 +1,4 @@
 ﻿#pragma once
-#include <memory>
-
 #include "core/TileObject.h"
 
 enum TileType { Floor = 0, Wall = 1, None = 2 };
@@ -9,7 +7,7 @@ class Tile {
  private:
   TileType type_ = TileType::Floor;
   unsigned int tileTextureIndex_ = 0;
-  std::unique_ptr<TileObject> object_;
+  TileObject* object_ = nullptr;
 
  public:
   Tile() = default;
@@ -24,7 +22,10 @@ class Tile {
 
   unsigned int getTextureIndex() const { return tileTextureIndex_; }
   bool isOccupied() const;
+  bool hasObject() const;
   TileType getType() const { return type_; }
-  TileObject& getObject();
+  TileObject* getObject() const;
+  void setObject(TileObject* object);
+  void clearObject();
   void setTextureIndex(unsigned int index);
 };

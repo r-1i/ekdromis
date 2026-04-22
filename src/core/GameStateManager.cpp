@@ -1,7 +1,6 @@
 ﻿#include "GameStateManager.h";
 
 #include "states/DungeonState.h";
-#include "states/HubState.h";
 
 void GameStateManager::pushState(std::unique_ptr<IGameState> state) {
   if (state) states_.push_back(std::move(state));
@@ -17,11 +16,11 @@ void GameStateManager::clearAndPush(std::unique_ptr<IGameState> state) {
 }
 
 void GameStateManager::goToHub() {
-  clearAndPush(std::make_unique<HubState>(*this, game_.getHero()));
+  clearAndPush(std::make_unique<DungeonState>(*this, game_.getHero()));
 }
 
 void GameStateManager::goToDungeon(int area) {
-  clearAndPush(std::make_unique<DungeonState>(*this, game_.getHero(), area));
+  // clearAndPush(std::make_unique<DungeonState>(*this, game_.getHero(), area));
 }
 
 void GameStateManager::pushPauseMenu() {
