@@ -6,8 +6,10 @@
 #include "SFML/Audio.hpp"
 #include "core/GameConstatns.h"
 #include "utils/JsonLevelLoader.h"
+#include "world/tile_objects/enemies/Lion.h"
+#include "world/tile_objects/enemies/Spearman.h"
 
-World::World(Hero& hero) : hero_(hero), music(), hud() { initialize(); }
+World::World(Hero& hero) : hero_(hero), music(), hud(hero) { initialize(); }
 
 bool World::isInsideGrid(const sf::Vector2i& position) const {
   return position.x >= 0 && position.x < gridWidth_ && position.y >= 0 &&
@@ -36,6 +38,10 @@ bool World::tryMoveObject(TileObject& object, const sf::Vector2i& direction) {
   return true;
 }
 
+bool World::isHeroOnTile(const sf::Vector2i& position) const {
+  return hero_.getPosition() == position;
+}
+
 void World::tryMoveHero(const sf::Vector2i& direction) {
   tryMoveObject(hero_, direction);
 }
@@ -60,12 +66,7 @@ void World::tryAttackObjectAt(const sf::Vector2i& position, int damage) {
 
 void World::updateEnemies() {
   for (const auto& enemy : enemies_) {
-    const std::optional<sf::Vector2i> direction = enemy->getNextMoveDirection();
-    if (!direction.has_value()) {
-      continue;
-    }
-
-    tryMoveObject(*enemy, direction.value());
+    enemy->onTick();
   }
 }
 
@@ -142,14 +143,20 @@ void World::initialize(const MapData& data) {
   tilesetTexture_.loadFromFile(data.textureFileLocation);
 
   enemies_.clear();
-  auto mummy = std::make_unique<Enemy>();
+  auto mummy = std::make_unique<Lion>(*this, "lion.png");
+  auto spearman = std::make_unique<Spearman>(*this, "lion.png");
   const sf::Vector2i mummySpawnPosition{8, 8};
+  const sf::Vector2i spearmanSpawnPosition{12, 12};
   mummy->setPosition(mummySpawnPosition);
+  spearman->setPosition(spearmanSpawnPosition);
   if (isInsideGrid(mummySpawnPosition) &&
       !grid_[mummySpawnPosition.y][mummySpawnPosition.x].hasObject()) {
     grid_[mummySpawnPosition.y][mummySpawnPosition.x].setObject(mummy.get());
     enemies_.push_back(std::move(mummy));
   }
+  grid_[spearmanSpawnPosition.y][spearmanSpawnPosition.x].setObject(
+      spearman.get());
+  enemies_.push_back(std::move(spearman));
 
   beatInterval_ = (60.f / data.bpm);
   timeToNextBeat_ = beatInterval_ + .2f;

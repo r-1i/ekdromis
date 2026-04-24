@@ -3,7 +3,7 @@
 static class GameConstants {
  public:
   static constexpr const char* kGameTitle = "Ekdromis";
-  static const unsigned int kTileSize = 76;
+  static const unsigned int kTileSize = 64;
   static const unsigned int kWallTilesStartIndex = 4;
   static const unsigned int kScreenWidth = 1024;
   static const unsigned int kScreenHeight = 768;

@@ -5,7 +5,8 @@
 class TileObject {
  protected:
   sf::Vector2i position_;
-  int health_ = 1;
+  int health_ = 4;
+  int damage_ = 1;
 
  public:
   virtual ~TileObject() = default;
@@ -22,9 +23,9 @@ class TileObject {
     }
   }
 
-  virtual int getDamage() const { return 0; }
+  virtual int getDamage() const { return damage_; }
   virtual bool isAlive() const { return health_ > 0; }
-
+  virtual int getHealth() const { return health_; }
   const sf::Vector2i& getPosition() const { return position_; }
   void setPosition(const sf::Vector2i& position) { position_ = position; }
 };

@@ -21,7 +21,7 @@ class Hero : public TileObject {
   void onTick(float timeBeforeTick);
   void onDeath() override;
   int getDamage() const override;
-
+  int getHealth() const override { return health_; };
   const sf::Vector2i& getPosition() const { return TileObject::getPosition(); }
 
   const std::optional<PlayerAction>& getAction() const { return playerAction_; }

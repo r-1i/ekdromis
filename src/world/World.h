@@ -8,7 +8,7 @@
 #include "core/Tile.h"
 #include "entities/Hero.h"
 #include "world/Level.h"
-#include "world/tile_objects/Enemy.h"
+#include "world/tile_objects/enemies/Enemy.h"
 
 class World : public Level {
  private:
@@ -21,9 +21,7 @@ class World : public Level {
 
   Hero& hero_;
   std::vector<std::unique_ptr<Enemy>> enemies_;
-  bool isInsideGrid(const sf::Vector2i& position) const;
-  bool tryMoveObject(TileObject& object, const sf::Vector2i& direction);
-  void tryAttackObjectAt(const sf::Vector2i& position, int damage);
+
   void tryMoveHero(const sf::Vector2i& direction);
   void updateEnemies();
 
@@ -32,6 +30,10 @@ class World : public Level {
 
  public:
   World(Hero& hero);
+  bool isInsideGrid(const sf::Vector2i& position) const;
+  bool tryMoveObject(TileObject& object, const sf::Vector2i& direction);
+  void tryAttackObjectAt(const sf::Vector2i& position, int damage);
+  bool isHeroOnTile(const sf::Vector2i& position) const;
   void handleEvent(const sf::Event& event);
   void cleanupDeadEnemies();
   void update(float dt) override;

@@ -6,7 +6,7 @@ Hero::Hero() : sprite(tilesetTexture_) {
   size_ = sf::Vector2f(GameConstants::kTileSize, GameConstants::kTileSize);
   tilesetTexture_.loadFromFile(GameConstants::kHeroTexturesTileset);
   sprite = sf::Sprite(tilesetTexture_, sf::IntRect({0, 0}, {352, 352}));
-  health_ = 10;
+  health_ = 5;
 }
 
 void Hero::update(float dt) { animTime_ -= dt; }

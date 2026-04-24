@@ -2,19 +2,35 @@
 
 #include "GameConstatns.h"
 
-Hud::Hud()
-    : debugFont("Roboto-Regular.ttf"),
+Hud::Hud(const Hero& hero)
+    : hero_(hero),
+      debugFont("Roboto-Regular.ttf"),
       debugText(debugFont),
-      smile(goodSmileTex) {
+      smile(goodSmileTex_) {
   debugFont.openFromFile("Roboto-Regular.ttf");
-  goodSmileTex.loadFromFile("smile_001.png");
-  defaultSmileTex.loadFromFile("smile_002.png");
+  goodSmileTex_.loadFromFile("smile_001.png");
+  defaultSmileTex_.loadFromFile("smile_002.png");
   lineTex_.loadFromFile("white_line_8x32.png");
+  heartsTexturesTex_.loadFromFile("heart_spritesheet.png");
 
   debugText = sf::Text(debugFont, "dfa", 30);
   debugText.setPosition({GameConstants::kScreenWidth - 300, 30});
 
-  smile.setTexture(goodSmileTex, true);
+  sf::Sprite heartSprite(heartsTexturesTex_, sf::IntRect({0, 0}, {32, 32}));
+  const int heartsScale = 2;
+  hearts_.push_back(heartSprite);
+  hearts_.push_back(heartSprite);
+  hearts_.push_back(heartSprite);
+
+  hearts_[0].setScale({heartsScale, heartsScale});
+  hearts_[1].setScale({heartsScale, heartsScale});
+  hearts_[2].setScale({heartsScale, heartsScale});
+
+  hearts_[0].setPosition({GameConstants::kScreenWidth - (96 * heartsScale), 0});
+  hearts_[1].setPosition({GameConstants::kScreenWidth - (64 * heartsScale), 0});
+  hearts_[2].setPosition({GameConstants::kScreenWidth - (32 * heartsScale), 0});
+
+  smile.setTexture(goodSmileTex_, true);
   smile.setOrigin({smile.getTextureRect().size.x / 2.f,
                    smile.getTextureRect().size.y / 2.f});
 
@@ -50,11 +66,11 @@ void Hud::update(float dt, float timeToBeat, float beatInterval) {
 void Hud::render(sf::RenderWindow& window) {
   debugText.setString(std::to_string(timeToBeat_));
   if (timeToBeat_ < (beatInterval_ / 2.f)) {
-    smile.setTexture(goodSmileTex, true);
+    smile.setTexture(goodSmileTex_, true);
     smile.setScale({4.f, 4.f});
 
   } else {
-    smile.setTexture(defaultSmileTex, true);
+    smile.setTexture(defaultSmileTex_, true);
     smile.setScale({3.f, 3.f});
   }
 
@@ -62,6 +78,20 @@ void Hud::render(sf::RenderWindow& window) {
     window.draw((*smiles_[i]));
   }
 
+  for (int i = 0; i < 3; i++) {
+    const int health = hero_.getHealth();
+    const int heartStart = 4 * i;
+    const int heartEnd = 4 * (i + 1);
+    if (health <= heartStart) {
+      hearts_[i].setTextureRect(sf::IntRect({4 * 32, 0}, {32, 32}));
+    } else if (health >= heartEnd) {
+      hearts_[i].setTextureRect(sf::IntRect({0, 0}, {32, 32}));
+    } else {
+      const int frame = 4 - (health - heartStart);
+      hearts_[i].setTextureRect(sf::IntRect({frame * 32, 0}, {32, 32}));
+    }
+    window.draw(hearts_[i]);
+  }
   window.draw(smile);
   window.draw(debugText);
 }

@@ -19,10 +19,10 @@ add_executable(ekdromis
     src/main.cpp
     src/core/Game.cpp
     src/core/GameStateManager.cpp
-    src/states/HubState.cpp
-    src/states/DungeonState.cpp
-    src/world/World.cpp
-    src/world/Village.cpp
+    "src/states/DungeonState.cpp"
+    
+    
+    "src/world/World.cpp"
     src/core/Tile.cpp
     src/core/TileObject.cpp
     src/world/tile_objects/chest.cpp
@@ -36,13 +36,13 @@ add_executable(ekdromis
     src/core/TileObject.h 
     src/core/TileObject.cpp
     src/world/tile_objects/Chest.h 
-    src/world/tile_objects/NPC.h 
-    src/world/tile_objects/NPC.cpp 
-    src/world/tile_objects/Enemy.h
-    src/world/tile_objects/Enemy.cpp
+    "src/world/tile_objects/enemies/Enemy.h"
+    "src/world/tile_objects/enemies/Enemy.cpp"
     src/world/Level.h
     src/utils/JsonLevelLoader.h
-    src/utils/JsonLevelLoader.cpp "src/world/Level.cpp" "src/core/GameConstatns.h" "src/core/Intent.h")
+    src/utils/JsonLevelLoader.cpp "src/world/Level.cpp" 
+    "src/core/GameConstatns.h" "src/core/Intent.h" "src/core/PlayerAction.h" 
+    "src/core/Hud.h" "src/core/Hud.cpp"   "src/world/tile_objects/enemies/Lion.h" "src/world/tile_objects/enemies/Lion.cpp" "src/world/tile_objects/enemies/Spearman.h" "src/world/tile_objects/enemies/Spearman.cpp" "src/world/TileManager.h")
 
 target_include_directories(ekdromis PRIVATE src/) 
 configure_file(${CMAKE_SOURCE_DIR}/src/Roboto-Regular.ttf 
@@ -51,10 +51,20 @@ configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/village_tileset.png
                ${CMAKE_BINARY_DIR}/bin/village_tileset.png COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/src/maps/village.json
                ${CMAKE_BINARY_DIR}/bin/village.json COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/music.ogg
+configure_file(${CMAKE_SOURCE_DIR}/src/music.ogg
                ${CMAKE_BINARY_DIR}/bin/music.ogg COPYONLY)
 configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/skeleton_idle.png
                ${CMAKE_BINARY_DIR}/bin/skeleton_idle.png COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/smiles/smile_001.png
+               ${CMAKE_BINARY_DIR}/bin/smile_001.png COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/smiles/smile_002.png
+               ${CMAKE_BINARY_DIR}/bin/smile_002.png COPYONLY) 
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/white_line_8x32.png
+               ${CMAKE_BINARY_DIR}/bin/white_line_8x32.png COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/heart_spritesheet.png
+               ${CMAKE_BINARY_DIR}/bin/heart_spritesheet.png COPYONLY)
+configure_file(${CMAKE_SOURCE_DIR}/src/assets/sprites/lion.png
+               ${CMAKE_BINARY_DIR}/bin/lion.png COPYONLY)
 target_compile_features(ekdromis PRIVATE cxx_std_17)
 target_link_libraries(ekdromis PRIVATE
     SFML::Graphics
