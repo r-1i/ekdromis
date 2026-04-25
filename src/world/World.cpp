@@ -2,117 +2,94 @@
 
 #include <algorithm>
 #include <iostream>
+#include <string>
 
 #include "SFML/Audio.hpp"
+#include "SFML/System.hpp"
 #include "core/GameConstatns.h"
 #include "utils/JsonLevelLoader.h"
+#include "world/factory/LionFactory.h"
 #include "world/tile_objects/enemies/Lion.h"
 #include "world/tile_objects/enemies/Spearman.h"
 
-World::World(Hero& hero) : hero_(hero), music(), hud(hero) { initialize(); }
+void World::spawnHeartDrop(const sf::Vector2i& cell) {
+  if (!tileManager_.isInsideGrid(cell)) {
+    return;
+  }
+  if (tileManager_.grid_[cell.y][cell.x].hasObject()) {
+    return;
+  }
 
-bool World::isInsideGrid(const sf::Vector2i& position) const {
-  return position.x >= 0 && position.x < gridWidth_ && position.y >= 0 &&
-         position.y < gridHeight_;
+  auto drop = std::make_unique<HeartDrop>();
+  drop->setPosition(cell);
+  tileManager_.grid_[cell.y][cell.x].setObject(drop.get());
+  heartDrops_.push_back(std::move(drop));
 }
 
-bool World::tryMoveObject(TileObject& object, const sf::Vector2i& direction) {
-  const sf::Vector2i source = object.getPosition();
-  const sf::Vector2i target = source + direction;
-  if (!canMoveTo(target)) {
+bool World::consumePortalTriggered() {
+  if (!portalTriggered_) {
     return false;
   }
-  if (!isInsideGrid(source) || !isInsideGrid(target)) {
-    return false;
-  }
-
-  Tile& sourceTile = grid_[source.y][source.x];
-  Tile& targetTile = grid_[target.y][target.x];
-  if (sourceTile.getObject() != &object) {
-    return false;
-  }
-
-  sourceTile.clearObject();
-  targetTile.setObject(&object);
-  object.setPosition(target);
+  portalTriggered_ = false;
   return true;
 }
 
-bool World::isHeroOnTile(const sf::Vector2i& position) const {
-  return hero_.getPosition() == position;
-}
-
-void World::tryMoveHero(const sf::Vector2i& direction) {
-  tryMoveObject(hero_, direction);
-}
-
-void World::tryAttackObjectAt(const sf::Vector2i& position, int damage) {
-  if (!isInsideGrid(position)) {
-    return;
-  }
-
-  Tile& targetTile = grid_[position.y][position.x];
-  if (!targetTile.getObject()) {
-    return;
-  }
-
-  targetTile.getObject()->takeDamage(damage);
-  if (targetTile.getObject()->isAlive() == false) {
-    std::cerr << "kill";
-  }
-
-  return;
-}
-
-void World::updateEnemies() {
-  for (const auto& enemy : enemies_) {
-    enemy->onTick();
-  }
-}
-
-void World::handleEvent(const sf::Event& event) {
-  if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
-    if (keyPressed->code == sf::Keyboard::Key::W) {
-      sf::Vector2i direction(0, -1);
-      hero_.trySetAction(direction, timeToNextBeat_,
-                         canMoveTo(hero_.getPosition() + direction));
-    }
-    if (keyPressed->code == sf::Keyboard::Key::S) {
-      sf::Vector2i direction(0, 1);
-      hero_.trySetAction(direction, timeToNextBeat_,
-                         canMoveTo(hero_.getPosition() + direction));
-    }
-    if (keyPressed->code == sf::Keyboard::Key::A) {
-      sf::Vector2i direction(-1, 0);
-      hero_.trySetAction(direction, timeToNextBeat_,
-                         canMoveTo(hero_.getPosition() + direction));
-    }
-    if (keyPressed->code == sf::Keyboard::Key::D) {
-      sf::Vector2i direction(1, 0);
-      hero_.trySetAction(direction, timeToNextBeat_,
-                         canMoveTo(hero_.getPosition() + direction));
-    }
-  }
+World::World(Hero& hero, int area)
+    : hero_(hero),
+      area_(area),
+      music_(musicBuffer),
+      hud_(hero),
+      tileManager_(TileManager(hero)),
+      enemyManager_(*this) {
+  initialize();
 }
 
 void World::initialize() {
-  const int ts = 128;
-
-  // Полы
-  registerTile(0, 0, 0, ts);
-  registerTile(1, 1, 0, ts);
-  registerTile(2, 2, 0, ts);
-  registerTile(3, 3, 0, ts);
-
-  // Стены
-  registerTile(4, 0, 1, ts);
-  registerTile(5, 1, 1, ts);
-  registerTile(6, 2, 1, ts);
-  registerTile(7, 3, 1, ts);
-
-  MapData data = JsonLevelLoader::load("village.json");
+  const std::string mapFileName = "map_" + std::to_string(area_) + ".json";
+  MapData data = JsonLevelLoader::load(mapFileName);
 
   initialize(data);
+}
+
+void World::applyCamera(sf::RenderWindow& window) {
+  sf::View worldView = window.getDefaultView();
+
+  const float viewHalfWidth = worldView.getSize().x * 0.5f;
+  const float viewHalfHeight = worldView.getSize().y * 0.5f;
+
+  const float worldWidth =
+      static_cast<float>(tileManager_.gridWidth_ * GameConstants::kTileSize);
+  const float worldHeight =
+      static_cast<float>(tileManager_.gridHeight_ * GameConstants::kTileSize);
+
+  const float heroCenterX = (static_cast<float>(hero_.getPosition().x) + 0.5f) *
+                            GameConstants::kTileSize;
+  const float heroCenterY = (static_cast<float>(hero_.getPosition().y) + 0.5f) *
+                            GameConstants::kTileSize;
+
+  float targetX = heroCenterX;
+  float targetY = heroCenterY;
+
+  if (worldWidth <= worldView.getSize().x) {
+    targetX = worldWidth * 0.5f;
+  } else {
+    targetX =
+        std::clamp(heroCenterX, viewHalfWidth, worldWidth - viewHalfWidth);
+  }
+
+  if (worldHeight <= worldView.getSize().y) {
+    targetY = worldHeight * 0.5f;
+  } else {
+    targetY =
+        std::clamp(heroCenterY, viewHalfHeight, worldHeight - viewHalfHeight);
+  }
+
+  sf::Vector2f target{targetX, targetY};
+  currentCameraCenter_ = currentCameraCenter_ +
+                         (target - currentCameraCenter_) * cameraLerpFactor_;
+
+  worldView.setCenter(currentCameraCenter_);
+  window.setView(worldView);
 }
 
 void World::initialize(const MapData& data) {
@@ -122,53 +99,54 @@ void World::initialize(const MapData& data) {
   }
 
   mapData_ = data;
-  gridHeight_ = data.height;
-  gridWidth_ = data.width;
-  grid_.resize(data.height);
-  for (auto& row : grid_) {
-    row.resize(data.width);
-  }
+  timer_ = mapData_.timerSeconds;
+  tickPerformedThisTime_ = false;
+  successfulBeatInputStreak_ = 0;
+  hero_.resetForLevel();
+  hero_.setSuccessfulInputStreak(0);
+  hero_.setDamageMultiplier(1);
+  effectsManager_.reset();
+  enemyManager_.reset();
+  heartDrops_.clear();
+  portals_.clear();
+  portalTriggered_ = false;
 
-  for (int y = 0; y < data.height; ++y) {
-    for (int x = 0; x < data.width; ++x) {
-      grid_[y][x].setTextureIndex(mapData_.tiles[y][x]);
+  tileManager_.initialize(mapData_);
+
+  for (const auto& portalSpawnInfo : mapData_.portals) {
+    const sf::Vector2i pos = portalSpawnInfo.position;
+    if (!tileManager_.isInsideGrid(pos) ||
+        tileManager_.grid_[pos.y][pos.x].hasObject()) {
+      continue;
     }
+    auto portal = portalFactory_.createPortal();
+    portal->setPosition(pos);
+    tileManager_.grid_[pos.y][pos.x].setObject(portal.get());
+    portals_.push_back(std::move(portal));
   }
 
-  hero_.setPosition(heroSpawnPosition_);
-  if (isInsideGrid(heroSpawnPosition_)) {
-    grid_[heroSpawnPosition_.y][heroSpawnPosition_.x].setObject(&hero_);
-  }
+  currentCameraCenter_ =
+      sf::Vector2f({hero_.getPosition().x * GameConstants::kTileSize +
+                        GameConstants::kTileSize * 0.5f,
+                    hero_.getPosition().y * GameConstants::kTileSize +
+                        GameConstants::kTileSize * 0.5f});
 
-  tilesetTexture_.loadFromFile(data.textureFileLocation);
+  enemyManager_.initialize(mapData_.enemies, tileManager_);
 
-  enemies_.clear();
-  auto mummy = std::make_unique<Lion>(*this, "lion.png");
-  auto spearman = std::make_unique<Spearman>(*this, "lion.png");
-  const sf::Vector2i mummySpawnPosition{8, 8};
-  const sf::Vector2i spearmanSpawnPosition{12, 12};
-  mummy->setPosition(mummySpawnPosition);
-  spearman->setPosition(spearmanSpawnPosition);
-  if (isInsideGrid(mummySpawnPosition) &&
-      !grid_[mummySpawnPosition.y][mummySpawnPosition.x].hasObject()) {
-    grid_[mummySpawnPosition.y][mummySpawnPosition.x].setObject(mummy.get());
-    enemies_.push_back(std::move(mummy));
-  }
-  grid_[spearmanSpawnPosition.y][spearmanSpawnPosition.x].setObject(
-      spearman.get());
-  enemies_.push_back(std::move(spearman));
+  music_.stop();
+  musicBuffer.loadFromFile(data.musicFileLocation);
+  music_.setBuffer(musicBuffer);
+  music_.setVolume(40.f);
+  music_.setLooping(true);
+  music_.setPlayingOffset(sf::seconds(0.f));
+  music_.play();
 
-  beatInterval_ = (60.f / data.bpm);
+  beatInterval_ = (60.f / static_cast<float>(data.musicBPM));
   timeToNextBeat_ = beatInterval_ + .2f;
-  music.openFromFile(data.musicFileLocation);
-  std::cerr << "try loading music.ogg\n";
-  music.setVolume(40.f);
-  music.setLooping(true);
-  music.play();
-  std::cerr << "music.play\n";
 }
 
 void World::update(float dt) {
+  timer_ = std::max(0.f, timer_ - dt);
   if (timeToNextBeat_ <= 0) {
     {
       if (!tickPerformedThisTime_) tick();
@@ -182,101 +160,123 @@ void World::update(float dt) {
   }
 
   hero_.update(dt);
-  for (const auto& enemy : enemies_) {
-    enemy->update(dt);
-  }
-  hud.update(dt, timeToNextBeat_, beatInterval_);
+  enemyManager_.update(dt);
+  effectsManager_.update(dt);
+  effectsManager_.cleanupEffects();
+
+  heartDrops_.erase(
+      std::remove_if(heartDrops_.begin(), heartDrops_.end(),
+                     [this](const std::unique_ptr<HeartDrop>& d) {
+                       if (!d || d->isAlive()) return false;
+                       const sf::Vector2i pos = d->getPosition();
+                       if (tileManager_.isInsideGrid(pos) &&
+                           tileManager_.grid_[pos.y][pos.x].getObject() ==
+                               d.get()) {
+                         tileManager_.grid_[pos.y][pos.x].clearObject();
+                       }
+                       return true;
+                     }),
+      heartDrops_.end());
+
+  portals_.erase(
+      std::remove_if(portals_.begin(), portals_.end(),
+                     [this](const std::unique_ptr<Portal>& p) {
+                       if (!p || p->isAlive()) return false;
+                       if (p->consumeTriggered()) {
+                         portalTriggered_ = true;
+                       }
+                       const sf::Vector2i pos = p->getPosition();
+                       if (tileManager_.isInsideGrid(pos) &&
+                           tileManager_.grid_[pos.y][pos.x].getObject() ==
+                               p.get()) {
+                         tileManager_.grid_[pos.y][pos.x].clearObject();
+                       }
+                       return true;
+                     }),
+      portals_.end());
+
+  hud_.update(dt, timeToNextBeat_, beatInterval_, timer_);
+
   timeToNextBeat_ -= dt;
 }
 
 void World::render(sf::RenderWindow& window) {
-  sf::View worldView = window.getDefaultView();
+  applyCamera(window);
 
-  const float viewHalfWidth = worldView.getSize().x * 0.5f;
-  const float viewHalfHeight = worldView.getSize().y * 0.5f;
-  const float worldWidth =
-      static_cast<float>(gridWidth_ * GameConstants::kTileSize);
-  const float worldHeight =
-      static_cast<float>(gridHeight_ * GameConstants::kTileSize);
-  const float heroCenterX = (static_cast<float>(hero_.getPosition().x) + 0.5f) *
-                            GameConstants::kTileSize;
-  const float heroCenterY = (static_cast<float>(hero_.getPosition().y) + 0.5f) *
-                            GameConstants::kTileSize;
-
-  float cameraX = heroCenterX;
-  float cameraY = heroCenterY;
-
-  if (worldWidth <= worldView.getSize().x) {
-    cameraX = worldWidth * 0.5f;
-  } else {
-    cameraX =
-        std::clamp(heroCenterX, viewHalfWidth, worldWidth - viewHalfWidth);
-  }
-
-  if (worldHeight <= worldView.getSize().y) {
-    cameraY = worldHeight * 0.5f;
-  } else {
-    cameraY =
-        std::clamp(heroCenterY, viewHalfHeight, worldHeight - viewHalfHeight);
-  }
-
-  worldView.setCenter({cameraX, cameraY});
-  window.setView(worldView);
-
-  for (int y = 0; y < gridHeight_; ++y) {
-    for (int x = 0; x < gridWidth_; ++x) {
-      unsigned int tileTextureIndex = grid_[y][x].getTextureIndex();
-
-      sf::IntRect texRect = getTextureRect(tileTextureIndex);
-
-      sf::Sprite sprite(tilesetTexture_);
-      sprite.setTextureRect(texRect);
-      const float tileScaler = GameConstants::kTileSize / 48.f;
-      sprite.setScale({.375f * tileScaler, .375f * tileScaler});
-      sprite.setPosition({static_cast<float>(x * GameConstants::kTileSize),
-                          static_cast<float>(y * GameConstants::kTileSize)});
-
-      window.draw(sprite);
-    }
-  }
+  tileManager_.render(window);
 
   hero_.render(window);
-  for (const auto& enemy : enemies_) {
-    enemy->render(window);
+  for (const auto& portal : portals_) {
+    if (portal) portal->render(window);
   }
-
+  for (const auto& d : heartDrops_) {
+    if (d) d->render(window);
+  }
+  enemyManager_.render(window);
+  effectsManager_.render(window);
   window.setView(window.getDefaultView());
-  hud.render(window);
-}
-
-void World::cleanupDeadEnemies() {
-  enemies_.erase(
-      std::remove_if(enemies_.begin(), enemies_.end(),
-                     [this](const std::unique_ptr<Enemy>& enemy) {
-                       if (!enemy || enemy->isAlive()) return false;
-
-                       const sf::Vector2i pos = enemy->getPosition();
-                       if (isInsideGrid(pos) &&
-                           grid_[pos.y][pos.x].getObject() == enemy.get()) {
-                         grid_[pos.y][pos.x].clearObject();
-                       }
-                       return true;  // удалить из enemies_
-                     }),
-      enemies_.end());
+  hud_.render(window);
 }
 
 void World::tick() {
+  const bool hasInputOnTick = hero_.hasAction();
   if (hero_.hasAction()) {
     const PlayerAction action = hero_.getAction().value();
     if (action.type == ActionType::Move) {
-      tryMoveHero(action.direction);
+      tileManager_.tryMoveHero(action.direction);
     } else if (action.type == ActionType::Attack) {
-      tryAttackObjectAt(hero_.getPosition() + action.direction,
-                        hero_.getDamage());
+      tileManager_.tryAttackObjectAt(hero_.getPosition() + action.direction,
+                                     hero_.getDamage());
+      const sf::Vector2i hitCell = hero_.getPosition() + action.direction;
+      effectsManager_.spawn(
+          EffectType::HeroAttack,
+          sf::Vector2f(
+              {static_cast<float>(hitCell.x * GameConstants::kTileSize),
+               static_cast<float>(hitCell.y * GameConstants::kTileSize)}));
     }
     hero_.resetAction();
   }
-  cleanupDeadEnemies();
-  updateEnemies();
+
+  if (hasInputOnTick) {
+    ++successfulBeatInputStreak_;
+  } else {
+    successfulBeatInputStreak_ = 0;
+  }
+  hero_.setSuccessfulInputStreak(successfulBeatInputStreak_);
+  hero_.setDamageMultiplier(successfulBeatInputStreak_ >= 10 ? 2 : 1);
+
+  enemyManager_.cleanupDeadEnemies(tileManager_);
+  enemyManager_.onTick();
+
+  enemyManager_.cleanupDeadEnemies(tileManager_);
   tickPerformedThisTime_ = true;
+}
+
+void World::handleEvent(const sf::Event& event) {
+  if (const auto* keyPressed = event.getIf<sf::Event::KeyPressed>()) {
+    if (keyPressed->code == sf::Keyboard::Key::W) {
+      sf::Vector2i direction(0, -1);
+      hero_.trySetAction(
+          direction, timeToNextBeat_,
+          tileManager_.canMoveTo(hero_.getPosition() + direction));
+    }
+    if (keyPressed->code == sf::Keyboard::Key::S) {
+      sf::Vector2i direction(0, 1);
+      hero_.trySetAction(
+          direction, timeToNextBeat_,
+          tileManager_.canMoveTo(hero_.getPosition() + direction));
+    }
+    if (keyPressed->code == sf::Keyboard::Key::A) {
+      sf::Vector2i direction(-1, 0);
+      hero_.trySetAction(
+          direction, timeToNextBeat_,
+          tileManager_.canMoveTo(hero_.getPosition() + direction));
+    }
+    if (keyPressed->code == sf::Keyboard::Key::D) {
+      sf::Vector2i direction(1, 0);
+      hero_.trySetAction(
+          direction, timeToNextBeat_,
+          tileManager_.canMoveTo(hero_.getPosition() + direction));
+    }
+  }
 }

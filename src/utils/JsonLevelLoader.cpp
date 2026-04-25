@@ -1,5 +1,6 @@
 ﻿#include "utils/JsonLevelLoader.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -22,12 +23,50 @@ MapData JsonLevelLoader::load(const std::string& fileName) {
     data.areaNumber = j.value("areaNumber", 0);
     data.levelNumber = j.value("levelNumber", 0);
     data.seed = j.value("seed", 0u);
-    data.textureFileLocation = j.value("texturesFileLocation", "");
+    data.textureFileName = j.value("texturesFileLocation", "");
+    data.timerSeconds =
+        std::max(1.f, j.value("timerSeconds", data.timerSeconds));
+    data.musicFileLocation = j.value("musicFileLocation", "music.ogg");
+    data.musicBPM = j.value("musicBPM", j.value("bpm", data.musicBPM));
+    data.musicBPM = std::max(1, data.musicBPM);
+    if (j.contains("heroSpawn") && j["heroSpawn"].is_object()) {
+      data.heroSpawnPosition.x =
+          j["heroSpawn"].value("x", data.heroSpawnPosition.x);
+      data.heroSpawnPosition.y =
+          j["heroSpawn"].value("y", data.heroSpawnPosition.y);
+    } else {
+      data.heroSpawnPosition.x =
+          j.value("heroSpawnX", data.heroSpawnPosition.x);
+      data.heroSpawnPosition.y =
+          j.value("heroSpawnY", data.heroSpawnPosition.y);
+    }
 
-    data.bpm = 100;
-    data.musicFileLocation = "music.ogg";
+    if (j.contains("enemies") && j["enemies"].is_array()) {
+      const auto& enemiesJson = j["enemies"];
 
-    // Загрузка тайлов
+      for (const auto& enemyJson : enemiesJson) {
+        if (enemyJson.is_object()) {
+          int x = enemyJson.value("x", 0);
+          int y = enemyJson.value("y", 0);
+          std::string name = enemyJson.value("name", "enemy");
+
+          data.enemies.push_back(EnemySpawnInfo(x, y, name));
+        }
+      }
+    }
+
+    if (j.contains("portals") && j["portals"].is_array()) {
+      for (const auto& portalJson : j["portals"]) {
+        if (!portalJson.is_object()) {
+          continue;
+        }
+        PortalSpawnInfo info;
+        info.position.x = portalJson.value("x", 0);
+        info.position.y = portalJson.value("y", 0);
+        data.portals.push_back(info);
+      }
+    }
+
     if (!j.contains("tiles") || !j["tiles"].is_array()) {
       throw std::runtime_error("Missing or invalid 'tiles' array in " +
                                fileName);

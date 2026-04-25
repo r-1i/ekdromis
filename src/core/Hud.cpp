@@ -1,11 +1,16 @@
 ﻿#include "core/Hud.h"
 
+#include <string>
+
 #include "GameConstatns.h"
 
 Hud::Hud(const Hero& hero)
     : hero_(hero),
       debugFont("Roboto-Regular.ttf"),
       debugText(debugFont),
+      damageMultiplierText(debugFont),
+      comboStreakText(debugFont),
+      matchTimerText(debugFont),
       smile(goodSmileTex_) {
   debugFont.openFromFile("Roboto-Regular.ttf");
   goodSmileTex_.loadFromFile("smile_001.png");
@@ -15,6 +20,12 @@ Hud::Hud(const Hero& hero)
 
   debugText = sf::Text(debugFont, "dfa", 30);
   debugText.setPosition({GameConstants::kScreenWidth - 300, 30});
+  damageMultiplierText = sf::Text(debugFont, "DMG x1", 26);
+  damageMultiplierText.setPosition({12.f, 8.f});
+  comboStreakText = sf::Text(debugFont, "Streak: 0", 22);
+  comboStreakText.setPosition({12.f, 38.f});
+  matchTimerText = sf::Text(debugFont, "03:00", 32);
+  matchTimerText.setPosition({GameConstants::kScreenWidth * 0.5f - 50.f, 8.f});
 
   sf::Sprite heartSprite(heartsTexturesTex_, sf::IntRect({0, 0}, {32, 32}));
   const int heartsScale = 2;
@@ -46,9 +57,12 @@ Hud::Hud(const Hero& hero)
   }
 }
 
-void Hud::update(float dt, float timeToBeat, float beatInterval) {
+void Hud::update(float dt, float timeToBeat, float beatInterval,
+                 float remainingMatchTimeSec) {
+  (void)dt;
   timeToBeat_ = timeToBeat;
   beatInterval_ = beatInterval;
+  remainingMatchTimeSec_ = remainingMatchTimeSec;
   for (int i = 0; i < 10; ++i) {
     if ((*smiles_[i]).getPosition().x >
         GameConstants::kScreenWidth / 2.f - 4.f) {
@@ -64,7 +78,21 @@ void Hud::update(float dt, float timeToBeat, float beatInterval) {
 }
 
 void Hud::render(sf::RenderWindow& window) {
+  const int totalSeconds = static_cast<int>(remainingMatchTimeSec_);
+  const int minutes = totalSeconds / 60;
+  const int seconds = totalSeconds % 60;
+  std::string timerLabel = (minutes < 10 ? "0" : "") + std::to_string(minutes) +
+                           ":" + (seconds < 10 ? "0" : "") +
+                           std::to_string(seconds);
   debugText.setString(std::to_string(timeToBeat_));
+  damageMultiplierText.setString("DMG x" +
+                                 std::to_string(hero_.getDamageMultiplier()));
+  comboStreakText.setString("Streak: " +
+                            std::to_string(hero_.getSuccessfulInputStreak()));
+  matchTimerText.setString(timerLabel);
+  const auto timerBounds = matchTimerText.getLocalBounds();
+  matchTimerText.setPosition(
+      {GameConstants::kScreenWidth * 0.5f - timerBounds.size.x * 0.5f, 8.f});
   if (timeToBeat_ < (beatInterval_ / 2.f)) {
     smile.setTexture(goodSmileTex_, true);
     smile.setScale({4.f, 4.f});
@@ -74,9 +102,9 @@ void Hud::render(sf::RenderWindow& window) {
     smile.setScale({3.f, 3.f});
   }
 
-  for (int i = 0; i < smiles_.size(); ++i) {
-    window.draw((*smiles_[i]));
-  }
+  // for (int i = 0; i < smiles_.size(); ++i) {
+  //   window.draw((*smiles_[i]));
+  // }
 
   for (int i = 0; i < 3; i++) {
     const int health = hero_.getHealth();
@@ -94,4 +122,7 @@ void Hud::render(sf::RenderWindow& window) {
   }
   window.draw(smile);
   window.draw(debugText);
+  window.draw(damageMultiplierText);
+  window.draw(comboStreakText);
+  window.draw(matchTimerText);
 }

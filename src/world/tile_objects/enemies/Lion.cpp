@@ -1,7 +1,9 @@
 #include "world/tile_objects/enemies/Lion.h"
 
 Lion::Lion(World& world, const std::string& textureFileLocation)
-    : Enemy(world, textureFileLocation) {}
+    : Enemy(world, textureFileLocation) {
+  animationFramesCount_ = 5;
+}
 
 std::optional<sf::Vector2i> Lion::getNextMoveDirection() {
   switch (phase_) {

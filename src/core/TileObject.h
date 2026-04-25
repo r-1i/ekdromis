@@ -2,6 +2,8 @@
 
 #include "SFML/Graphics.hpp"
 
+class Hero;
+
 class TileObject {
  protected:
   sf::Vector2i position_;
@@ -15,6 +17,7 @@ class TileObject {
   virtual void onDeath() {}
 
   virtual bool isPassable() const { return false; }
+  virtual void onHeroStepped(Hero& hero) { (void)hero; }
 
   virtual void takeDamage(int amount) {
     health_ -= amount;

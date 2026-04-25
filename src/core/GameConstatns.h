@@ -7,5 +7,6 @@ static class GameConstants {
   static const unsigned int kWallTilesStartIndex = 4;
   static const unsigned int kScreenWidth = 1024;
   static const unsigned int kScreenHeight = 768;
-  static constexpr const char* kHeroTexturesTileset = "skeleton_idle.png";
+  static constexpr const char* kHeroTexturesTileset = "hero_idle.png";
+  static const int kHeroTextureSize = 96;
 };

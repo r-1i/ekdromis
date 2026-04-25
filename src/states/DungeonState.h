@@ -8,11 +8,11 @@ class DungeonState : public IGameState {
   GameStateManager& gsm_;
   Hero& hero_;
   World village_;
+  int area_ = 1;
   sf::Vector2i heroSpawnPosition_ = {12, 12};
-  float timeBeforeBeat_ = .75f;
 
  public:
-  DungeonState(GameStateManager& gameStateManager, Hero& hero);
+  DungeonState(GameStateManager& gameStateManager, Hero& hero, int area = 1);
   void handleEvent(const sf::Event& event) override;
   void update(float dt) override;
   void render(sf::RenderWindow& window) override;

@@ -1,8 +1,36 @@
 
 #include "world/tile_objects/enemies/Spearman.h"
 
+#include <memory>
+
+#include "world/World.h"
+#include "world/tile_objects/enemies/Spear.h"
+
 Spearman::Spearman(World& world, const std::string& textureFileLocation)
-    : Enemy(world, textureFileLocation) {}
+    : Enemy(world, textureFileLocation) {
+  animationFramesCount_ = 5;
+}
+
+void Spearman::onTick() {
+  Enemy::onTick();
+
+  if (ticksToNextSpear_ > 0) {
+    --ticksToNextSpear_;
+    return;
+  }
+
+  const sf::Vector2i spearSpawnCell = position_ + sf::Vector2i{-1, 0};
+  if (!world_.tileManager_.isInsideGrid(spearSpawnCell) ||
+      world_.tileManager_.grid_[spearSpawnCell.y][spearSpawnCell.x]
+          .hasObject()) {
+    return;
+  }
+
+  auto spear = std::make_unique<Spear>(world_, "spear.png");
+  spear->setPosition(spearSpawnCell);
+  world_.enemyManager_.addEnemy(std::move(spear), world_.tileManager_);
+  ticksToNextSpear_ = 3;
+}
 
 std::optional<sf::Vector2i> Spearman::getNextMoveDirection() {
   switch (phase_) {

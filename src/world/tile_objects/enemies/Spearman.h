@@ -13,10 +13,12 @@ class Spearman : public Enemy {
     WaitForSecondTick,
   };
 
+  int ticksToNextSpear_ = 0;
   SpearmanMovement phase_ = SpearmanMovement::MoveUpFirst;
   virtual std::optional<sf::Vector2i> getNextMoveDirection() override;
 
  public:
   Spearman(World& world, const std::string& textureFileLocation);
   ~Spearman() override = default;
+  void onTick() override;
 };

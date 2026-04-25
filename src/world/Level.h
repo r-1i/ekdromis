@@ -6,22 +6,12 @@
 
 class Level {
  protected:
-  sf::Texture tilesetTexture_;
-  std::unordered_map<unsigned int, sf::IntRect> textureRects_;
-  sf::Vector2i heroSpawnPosition_ = {3, 3};
-  float beatInterval_ = 0.8f;
+  float beatInterval_ = .8f;
   float timeToNextBeat_ = .6f;
-
-  MapData mapData_;
-  std::vector<std::vector<Tile>> grid_;
-
-  void registerTile(unsigned int index, int x, int y, int tileSize = 32);
-  sf::IntRect getTextureRect(unsigned int index);
 
  public:
   virtual ~Level() = default;
   virtual void initialize(const MapData& data) = 0;
   virtual void update(float dt) = 0;
   virtual void render(sf::RenderWindow& window) = 0;
-  bool canMoveTo(const sf::Vector2i position);
 };

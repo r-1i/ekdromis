@@ -25,6 +25,7 @@ class Tile {
   bool hasObject() const;
   TileType getType() const { return type_; }
   TileObject* getObject() const;
+
   void setObject(TileObject* object);
   void clearObject();
   void setTextureIndex(unsigned int index);

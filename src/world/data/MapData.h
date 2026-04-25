@@ -3,17 +3,23 @@
 #include <vector>
 
 #include "core/Tile.h"
+#include "world/data/EnemySpawnInfo.h"
+#include "world/data/PortalSpawnInfo.h"
 
 struct MapData {
   int width = 0;
   int height = 0;
-  int bpm = 120;
+  int musicBPM = 120;
+  float timerSeconds = 180.f;
+  sf::Vector2i heroSpawnPosition{3, 3};
 
   std::string name;
   std::string musicFileLocation;
-  std::string textureFileLocation;
+  std::string textureFileName;
 
   std::vector<std::vector<unsigned int>> tiles;
+  std::vector<EnemySpawnInfo> enemies;
+  std::vector<PortalSpawnInfo> portals;
 
   int areaNumber = 0;
   int levelNumber = 0;
@@ -23,7 +29,12 @@ struct MapData {
 
   void clear() {
     tiles.clear();
+    enemies.clear();
+    portals.clear();
     width = height = 0;
+    musicBPM = 120;
+    timerSeconds = 180.f;
+    heroSpawnPosition = {3, 3};
     name.clear();
   }
 };

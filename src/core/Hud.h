@@ -8,6 +8,9 @@ class Hud {
 
   sf::Font debugFont;
   sf::Text debugText;
+  sf::Text damageMultiplierText;
+  sf::Text comboStreakText;
+  sf::Text matchTimerText;
   sf::Texture goodSmileTex_;
   sf::Texture defaultSmileTex_;
   sf::Texture heartsTexturesTex_;
@@ -17,9 +20,11 @@ class Hud {
   std::vector<std::unique_ptr<sf::Sprite>> smiles_;
   float timeToBeat_ = 0.f;
   float beatInterval_ = 0.f;
+  float remainingMatchTimeSec_ = 180.f;
 
  public:
   Hud(const Hero& hero);
-  void update(float dt, float timeToBeat, float beatInterval);
+  void update(float dt, float timeToBeat, float beatInterval,
+              float remainingMatchTimeSec);
   void render(sf::RenderWindow& window);
 };
