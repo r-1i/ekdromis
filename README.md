@@ -1,6 +1,9 @@
 Резников Ярослав Алексеевич
 Версия SFML: 3.0.2
 
+<img width="1017" height="792" alt="Ekdromis_Gameplay" src="https://github.com/user-attachments/assets/c1524b97-ab34-4f37-9ab3-c2476677810e" />
+
+
 Доп. механика 1- ритм: ввод действий в окне бита по BPM музыки (World.cpp)
 
 Доп. механика 2- увеличение урона за серию попаданий: множитель урона за streak успешных действий (World.cpp)
